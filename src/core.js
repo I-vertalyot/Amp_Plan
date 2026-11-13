@@ -1,4 +1,4 @@
-/* Amp IP Planner: core logic. Pure functions, no DOM, so it runs in the page and in Node tests. */
+/* Amp Plan: core logic. Pure functions, no DOM, so it runs in the page and in Node tests. */
 (function (root) {
   'use strict';
 
@@ -1150,7 +1150,7 @@
       (v.devices.length ? '<p class="eq"><b>Equipment</b> ' + e(equipmentLine(v)) + '</p>' : '') + problems +
       '<table><thead><tr><th>Set</th><th>OK</th><th>Name</th><th>Model</th><th>IP address</th>' + (red ? '<th>Secondary</th>' : '') +
       '<th>Location</th><th>Switch / port</th><th>Serial · notes</th></tr></thead><tbody>' + body + '</tbody></table>' +
-      '<p class="foot">Amp IP Planner · exported ' + e(new Date().toISOString().slice(0, 16).replace('T', ' ')) + ' UTC · the unit’s front panel shows the bold number.</p></body></html>';
+      '<p class="foot">Amp Plan · exported ' + e(new Date().toISOString().slice(0, 16).replace('T', ' ')) + ' UTC · the unit’s front panel shows the bold number.</p></body></html>';
   }
 
   function bundle(venues) {

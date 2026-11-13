@@ -1,4 +1,4 @@
-/* Amp IP Planner: interface. Depends on window.IPCore (core.js). */
+/* Amp Plan: interface. Depends on window.IPCore (core.js). */
 (function () {
   'use strict';
   const C = window.IPCore;

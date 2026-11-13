@@ -1,4 +1,4 @@
-# Amp IP Planner
+# Amp Plan
 
 A planner for L-Acoustics amplified controllers on live shows: pick speakers, get the amps and racks they need, lay the amps out in racks (the "Amp plan") and give every unit an IP address.
 

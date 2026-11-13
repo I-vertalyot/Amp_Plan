@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Amp IP Planner</title>
+<title>Amp Plan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -721,7 +721,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 <div class="app">
   <aside class="rail" id="rail" aria-label="Venues">
     <div class="brand">
-      <p class="brand-name"><span class="brand-mark" aria-hidden="true"><i></i></span>Amp IP Planner</p>
+      <p class="brand-name"><span class="brand-mark" aria-hidden="true"><i></i></span>Amp Plan</p>
       <p class="brand-sub">Address plans for L-Acoustics amplified controllers, venue by venue.</p>
     </div>
     <div class="rail-actions">
@@ -734,7 +734,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
   </aside>
   <div class="rail-shade" data-act="rail-close"></div>
   <main class="work" id="work">
-    <div class="topbar"><button class="icon-btn" data-act="rail-open" aria-label="Show venues"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button><p class="brand-name">Amp IP Planner</p></div>
+    <div class="topbar"><button class="icon-btn" data-act="rail-open" aria-label="Show venues"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button><p class="brand-name">Amp Plan</p></div>
     <div class="work-inner" id="work-inner"><div class="loading"><span class="dot busy"></span><span>Opening your saved plans…</span></div></div>
   </main>
 </div>
@@ -743,7 +743,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 <div class="tip" id="tip" hidden></div>
 <input type="file" id="import-file" accept=".json,application/json" hidden>
 <script>
-/* Amp IP Planner: core logic. Pure functions, no DOM, so it runs in the page and in Node tests. */
+/* Amp Plan: core logic. Pure functions, no DOM, so it runs in the page and in Node tests. */
 (function (root) {
   'use strict';
 
@@ -1895,7 +1895,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
       (v.devices.length ? '<p class="eq"><b>Equipment</b> ' + e(equipmentLine(v)) + '</p>' : '') + problems +
       '<table><thead><tr><th>Set</th><th>OK</th><th>Name</th><th>Model</th><th>IP address</th>' + (red ? '<th>Secondary</th>' : '') +
       '<th>Location</th><th>Switch / port</th><th>Serial · notes</th></tr></thead><tbody>' + body + '</tbody></table>' +
-      '<p class="foot">Amp IP Planner · exported ' + e(new Date().toISOString().slice(0, 16).replace('T', ' ')) + ' UTC · the unit’s front panel shows the bold number.</p></body></html>';
+      '<p class="foot">Amp Plan · exported ' + e(new Date().toISOString().slice(0, 16).replace('T', ' ')) + ' UTC · the unit’s front panel shows the bold number.</p></body></html>';
   }
 
   function bundle(venues) {
@@ -2043,7 +2043,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 
 </script>
 <script>
-/* Amp IP Planner: interface. Depends on window.IPCore (core.js). */
+/* Amp Plan: interface. Depends on window.IPCore (core.js). */
 (function () {
   'use strict';
   const C = window.IPCore;
