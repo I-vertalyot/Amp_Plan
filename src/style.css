@@ -704,3 +704,13 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .ptray-items .pslot { min-width: 112px; padding: 0 12px; }
 .ptray-items { gap: 8px 10px; }
 .pside-add { display: flex; gap: 6px; }
+
+/* folding network card */
+.net-toggle { width: 100%; border: 0; background: transparent; text-align: left; padding: 14px 18px; align-items: center; color: inherit; border-radius: var(--radius); }
+.net.is-open .net-toggle { padding-bottom: 0; }
+.net-toggle:hover .net-edit { text-decoration: underline; }
+.net-toggle .chev { width: 16px; height: 16px; flex: none; transition: transform .15s; color: var(--muted); }
+.net.is-open .chev { transform: rotate(90deg); }
+.net-brief { font-size: 12.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.net.is-open .net-brief { visibility: hidden; }
+.net-edit { font-size: 13px; font-weight: 600; color: var(--ink-2); flex: none; }

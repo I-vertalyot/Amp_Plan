@@ -463,7 +463,14 @@
     const secTxt = n.redundancy
       ? (i.secNetwork != null ? 'Secondary network <b class="mono">' + esc(ip(i.secNetwork) + '/' + i.prefix) + '</b>' : 'No room for a secondary network')
       : 'Adds a secondary network: subnet + 1, same last numbers';
-    return '<section class="card net" id="net-card" aria-labelledby="net-h"><div class="card-h"><h2 id="net-h">Network</h2><span class="muted">Applies to every device in this venue</span></div><div class="net-grid">' +
+    // folded by default; opens by itself when the network itself needs fixing
+    const open = !!prefs.netOpen || !i.ok;
+    const brief = i.ok
+      ? [ip(i.network) + '/' + i.prefix, 'computer ' + (n.computer || '—'), n.gateway ? 'gateway ' + n.gateway : '', n.dhcpFrom && n.dhcpTo ? 'DHCP ' + n.dhcpFrom.split('.').pop() + '–' + n.dhcpTo.split('.').pop() : '', n.redundancy ? 'Milan redundancy on' : ''].filter(Boolean).join(' · ')
+      : 'Needs a network';
+    return '<section class="card net' + (open ? ' is-open' : '') + '" id="net-card" aria-labelledby="net-h"><button type="button" class="card-h net-toggle" data-act="net-toggle" aria-expanded="' + open + '" aria-controls="net-body">' +
+      '<svg class="i chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>' +
+      '<h2 id="net-h">Network</h2><span class="muted mono net-brief">' + esc(brief) + '</span><span class="net-edit">' + (open ? 'Hide' : 'Edit') + '</span></button><div class="net-grid" id="net-body"' + (open ? '' : ' hidden') + '>' +
       '<div class="field"><label for="n-network">Primary network</label><div class="join"><input id="n-network" class="mono" data-nf="network" value="' + esc(n.network) + '" inputmode="decimal" spellcheck="false" autocomplete="off"' + ro + '>' +
       '<select id="n-prefix" data-nf="prefix" aria-label="Subnet mask"' + ro + '>' + prefixOpts + '</select></div><small>' + (i.ok ? 'Mask ' + esc(i.mask) + ' · broadcast .' + C.host(i.broadcast) : 'Enter a network such as 192.168.1.0') + '</small></div>' +
       blockField +
@@ -1386,6 +1393,7 @@
     'tab': (t) => setTab(t.dataset.tab),
     'add-devices': () => openAddDevices(),
     'add-speakers': () => openAddSpeakers(),
+    'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); },
     'dev-view': (t) => { S.devView = t.dataset.view === 'list' ? 'list' : 'racks'; prefs.devView = S.devView; savePrefs(); renderTab(); },
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),
     'amp-new': (t) => {
