@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amp IP Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail" id="rail" aria-label="Venues">
+    <div class="brand">
+      <p class="brand-name"><span class="brand-mark" aria-hidden="true"><i></i></span>Amp IP Planner</p>
+      <p class="brand-sub">Address plans for L-Acoustics amplified controllers, venue by venue.</p>
+    </div>
+    <div class="rail-actions">
+      <button class="btn btn-primary" data-act="new-venue">New venue</button>
+      <button class="btn" data-act="import">Import</button>
+    </div>
+    <div class="rail-search"><label class="sr-only" for="venue-q">Search venues</label><input id="venue-q" type="search" placeholder="Search venues" autocomplete="off"></div>
+    <div class="venue-scroll" id="venue-scroll"></div>
+    <div class="rail-foot" id="store-status" role="status"><span class="dot busy"></span><span>Opening saved plans…</span></div>
+  </aside>
+  <div class="rail-shade" data-act="rail-close"></div>
+  <main class="work" id="work">
+    <div class="topbar"><button class="icon-btn" data-act="rail-open" aria-label="Show venues"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button><p class="brand-name">Amp IP Planner</p></div>
+    <div class="work-inner" id="work-inner"><div class="loading"><span class="dot busy"></span><span>Opening your saved plans…</span></div></div>
+  </main>
+</div>
+<div id="modal-root"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="tip" id="tip" hidden></div>
+<input type="file" id="import-file" accept=".json,application/json" hidden>
+<script>
+/*__CORE__*/
+</script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>

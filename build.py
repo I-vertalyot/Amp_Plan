@@ -1,0 +1,10 @@
+import pathlib
+root = pathlib.Path(__file__).parent
+t = (root / 'src/index.template.html').read_text()
+for key, f in (('/*__CSS__*/', 'src/style.css'), ('/*__CORE__*/', 'src/core.js'), ('/*__APP__*/', 'src/app.js')):
+    body = (root / f).read_text()
+    assert '</script' not in body.lower() or f.endswith('.css'), f
+    t = t.replace(key, body)
+out = root / 'dist/index.html'
+out.write_text(t)
+print(out, len(t.encode()), 'bytes')
