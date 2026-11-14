@@ -279,11 +279,7 @@
     const ids = new Set(S.venues.map((v) => v.id));
     if (h && ids.has(h)) S.cur = h;
     else if (S.cur && ids.has(S.cur)) { /* keep */ }
-    else if (prefs.last && ids.has(prefs.last)) S.cur = prefs.last;
-    else {
-      const first = groupVenues(S.venues).reduce((acc, g) => acc.concat(g.list), [])[0];
-      S.cur = first ? first.id : '';
-    }
+    else S.cur = '';
   }
   function isEditing() {
     const a = document.activeElement;
@@ -320,9 +316,20 @@
   }
 
   // ---------------------------------------------------------------- rendering
+  // Two pages: home (the venue list, where venues are created and opened) and a venue page with a Back button
   function render() {
+    const home = S.loaded && !cur();
+    document.body.classList.toggle('at-home', home);
+    document.body.classList.toggle('in-venue', !home);
     renderRail();
     renderWork();
+  }
+  function goHome() {
+    S.cur = '';
+    document.body.classList.remove('rail-open');
+    try { if (location.hash) history.replaceState(null, '', location.pathname + location.search); } catch (e) { try { location.hash = ''; } catch (x) { /* ignore */ } }
+    render();
+    try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
   }
 
   function renderRail() {
@@ -332,7 +339,7 @@
     const list = q ? S.venues.filter((v) => (v.name + ' ' + v.city + ' ' + v.date).toLowerCase().indexOf(q) >= 0) : S.venues;
     const top = box.scrollTop;
     if (!S.loaded) box.innerHTML = '';
-    else if (!S.venues.length) box.innerHTML = '<p class="venue-group">No venues yet</p>';
+    else if (!S.venues.length) box.innerHTML = '<p class="venue-group">No venues yet</p><p class="home-empty">Create your first venue, or open the example plan to look around.</p>' + (S.readOnly ? '' : '<button class="btn" data-act="load-example">Open the example plan</button>');
     else if (!list.length) box.innerHTML = '<p class="venue-group">No venue matches</p>';
     else box.innerHTML = groupVenues(list).map((g) => '<p class="venue-group">' + esc(g.label) + '</p><ul class="venue-list">' + g.list.map(venueItem).join('') + '</ul>').join('');
     box.scrollTop = top;
@@ -426,7 +433,8 @@
 
   function headHtml(v) {
     const ro = S.readOnly ? ' disabled' : '';
-    return '<header class="vhead"><div class="vhead-main">' +
+    return '<button type="button" class="btn back-btn" data-act="go-home"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>All venues</button>' +
+      '<header class="vhead"><div class="vhead-main">' +
       '<label class="sr-only" for="v-name">Venue name</label><input id="v-name" class="vname" data-vf="name" value="' + esc(v.name) + '" maxlength="120" autocomplete="off"' + ro + '>' +
       '<div class="vmeta"><label class="vmeta-field" for="v-date"><span>Show date</span><input id="v-date" type="date" data-vf="date" value="' + esc(v.date) + '"' + ro + '></label>' +
       '<label class="vmeta-field grow" for="v-city"><span>Venue</span><input id="v-city" data-vf="city" value="' + esc(v.city) + '" maxlength="120" placeholder="Hall, city" autocomplete="off"' + ro + '></label></div></div>' +
@@ -1662,6 +1670,7 @@
     window.addEventListener('hashchange', () => {
       const h = decodeURIComponent(location.hash.slice(1));
       if (h && h !== S.cur && S.venues.some((v) => v.id === h)) openVenue(h, true);
+      else if (!h && S.cur) goHome();
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') Array.from(S.dirty).forEach((id) => flush(id));
@@ -1755,6 +1764,7 @@
     'goto-net': () => { const n = $('#net-card'); if (n) { n.scrollIntoView({ block: 'start' }); const f = n.querySelector('input, select'); if (f) f.focus({ preventScroll: true }); } },
     'copy-scan': () => { const v = cur(); const s = v && analysis(v).stats; if (s && s.scanFrom != null) copyText(ip(s.scanFrom) + ' - ' + ip(s.scanTo), 'Scan range copied.'); },
     'rail-open': () => document.body.classList.add('rail-open'),
+    'go-home': () => goHome(),
     'rail-close': () => document.body.classList.remove('rail-open'),
     'local-mode': () => startLocal('Working in this browser only, because your saved plans weren’t reachable. Export a backup before you close the page.'),
   };

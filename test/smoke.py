@@ -53,7 +53,7 @@ def run(p, label, mock, dark=False):
     page.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))
     page.on('console', lambda m: errors.append('console.' + m.type + ': ' + m.text) if m.type in ('error', 'warning') else None)
     page.goto(URL)
-    page.wait_for_selector('.empty, .vhead', timeout=15000)
+    page.wait_for_selector('#rail .brand, .vhead', timeout=15000)
     page.wait_for_timeout(1700 if not mock else 200)
     page.screenshot(path=str(SHOTS / f'{label}-1-empty.png'))
     page.click('[data-act="load-example"]')
