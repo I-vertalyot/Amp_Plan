@@ -891,3 +891,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .ptray-items .psingle .pslot { min-width: 0; padding: 0 5px; }
 .prack-name.is-static { cursor: default; }
 .prack-name.is-static span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+.pside.drop-hover { outline: 2px dashed var(--putty-dk, #888); outline-offset: 6px; border-radius: 4px; }
+.pside-add { flex-wrap: wrap; justify-content: inherit; }
+.pside-C .pside-add { justify-content: center; }
+.pside-R .pside-add { justify-content: flex-end; }

@@ -90,9 +90,9 @@ def run(p, label, mock, dark=False):
     page.wait_for_selector('.plan')
     page.wait_for_timeout(200)
     page.screenshot(path=str(SHOTS / f'{label}-3a-racks.png'), full_page=True)
-    racks_txt = lambda: [' | '.join(page.locator('.prack').nth(k).inner_text().split('\n')) for k in range(page.locator('.prack').count())]
+    racks_txt = lambda: [' | '.join(page.locator('.prack:not(.psingle)').nth(k).inner_text().split('\n')) for k in range(page.locator('.prack:not(.psingle)').count())]
     print(label, 'racks:', racks_txt())
-    print(label, 'tray:', page.inner_text('.ptray').replace('\n', ' | '))
+    print(label, 'singles:', page.locator('.psingle .pslot[data-dev]').all_inner_texts())
     # a linked K2 amp: preset is locked, .21 is taken by Main R, pick .19
     page.locator('.pside-L .prack').first.locator('.pslot[data-dev]').first.click()
     page.wait_for_selector('#ae-ip')
@@ -110,7 +110,7 @@ def run(p, label, mock, dark=False):
     print(label, 'after .19:', first)
     assert first == 'K2 - 19', 'ip change not shown'
     # the spare amp in the tray: choose a preset and a number, then pack it
-    page.locator('.ptray .pslot[data-dev]').first.click()
+    page.locator('.psingle .pslot[data-dev]').first.click()
     page.wait_for_selector('#ae-preset')
     page.select_option('#ae-preset', 'KS28')
     page.select_option('#ae-ip', '60')
@@ -118,10 +118,10 @@ def run(p, label, mock, dark=False):
     print(label, 'spare preset hint:', page.inner_text('#ae-preset-hint'))
     page.click('.modal-f .btn-primary')
     page.wait_for_timeout(200)
-    print(label, 'tray after spare:', page.locator('.ptray .pslot[data-dev]').all_inner_texts())
+    print(label, 'tray after spare:', page.locator('.psingle .pslot[data-dev]').all_inner_texts())
     page.click('[data-act="rack-pack"]')
     page.wait_for_timeout(200)
-    print(label, 'after pack:', racks_txt()[-2:], '| tray:', page.locator('.ptray .pslot[data-dev]').count())
+    print(label, 'after pack:', racks_txt()[-2:], '| tray:', page.locator('.psingle .pslot[data-dev]').count())
     # unlink one Main R amp to Kara II on its own
     page.locator('.pside-R .prack').first.locator('.pslot[data-dev]').nth(1).click()
     page.wait_for_selector('#ae-unlock')
@@ -140,8 +140,11 @@ def run(p, label, mock, dark=False):
     # drag the second Left K2 rack's amp into an empty slot of rack 1? rack 1 is full: drag into rack 2's empty slot
     src = page.locator('.pside-L .prack').first.locator('.pslot[data-dev]').nth(2)
     dst = page.locator('.pside-L .prack').nth(1).locator('.pslot.p-empty').first
+    vp = page.viewport_size
+    page.set_viewport_size({'width': vp['width'], 'height': 1600})  # both racks on screen for the drag
     src.drag_to(dst)
     page.wait_for_timeout(200)
+    page.set_viewport_size(vp)
     print(label, 'after drag left:', racks_txt()[:2])
     # empty slot -> new amp
     page.locator('.pside-L .prack').first.locator('.pslot.p-empty').first.click()

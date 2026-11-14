@@ -607,7 +607,7 @@
   function devicesHtml(v, a) {
     if (S.devView === 'racks') {
       const tools = '<div class="toolbar"><div class="tb-left">' + viewSwitch() +
-        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button>' + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
+        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button>' + (v.devices.some((d) => C.isAmpModel(d.model) && !C.rackById(v, d.rack)) && (v.racks || []).length ? '<button class="btn" data-act="rack-pack">Pack single amps into racks</button>' : '') + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
         '</div></div>';
       return tools + planHtml(v, a);
     }
@@ -928,23 +928,22 @@
       (noZone ? '<li><span class="sw" style="background:var(--z8)"></span>No zone</li>' : '') + '</ul>';
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
     const head = '<div class="plan-head"><div class="plan-title" aria-hidden="true"><span class="pt-amp">AMP</span><span class="pt-plan">PLAN</span></div><p class="plan-sub">' + esc(sub) + '</p>' + legend + '</div>';
+    // amps outside the racks sit on their zone's side of the stage, after that side's racks
+    const sideOfAmp = (d) => { const z = v.zones.find((x) => x.id === d.zone); return z && C.SIDES.indexOf(z.side) >= 0 ? z.side : 'C'; };
     const sides = C.SIDES.map((sd) => {
       const list = racks.filter((r) => r.side === sd);
+      const singles = loose.filter((d) => sideOfAmp(d) === sd);
+      const n = list.length + singles.length;
       const label = C.SIDE_LABEL[sd];
-      return '<section class="pside pside-' + sd + '" aria-label="' + label + '"><div class="pside-tag">' + label + '</div>' +
-        (list.length ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(list.length / 3)) + '">' + list.map((r) => rackBoxHtml(v, a, r)).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
-        (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>') + '</section>';
+      return '<section class="pside pside-' + sd + '" aria-label="' + label + '" data-side="' + sd + '"><div class="pside-tag">' + label + '</div>' +
+        (n ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(n / 3)) + '">' + list.map((r) => rackBoxHtml(v, a, r)).join('') + singles.map((d) => singleHtml(v, a, d)).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
+        (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>') + '</section>';
     }).join('');
-    const tray = '<section class="ptray" aria-label="Amps not in a rack"><div class="ptray-head"><b>Not in a rack</b><span class="muted">' + esc(C.plural(loose.length, 'amp')) + '</span><span class="ptray-actions">' +
-      (!ro && loose.length ? '<button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button>' : '') +
-      (ro ? '' : '<button type="button" class="btn" data-act="amp-new" data-loose="1">+ Amp without rack</button>') + '</span></div>' +
-      '<div class="ptray-items">' + (loose.length ? loose.map((d) => singleHtml(v, a, d)).join('')
-        : '<span class="muted">' + (amps.length ? 'Every amp is in a rack. Drag one here to take it out.' : 'No amps yet. Add speakers on the Speakers & amps tab, or add a rack and fill its slots.') + '</span>') + '</div></section>';
-    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them.</p>';
+    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them, or onto an empty spot to take one out of its rack.</p>';
     const callout = !ro && !racks.length && loose.length
       ? '<div class="plan-callout"><div><b>' + esc(C.plural(loose.length, 'amp')) + ' not in racks yet</b><span>Pack into racks puts each zone’s amps on its side of the stage, filling L-Acoustics racks of 3. You can move them afterwards.</span></div><button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button></div>'
       : '';
-    return '<div class="card plan">' + head + hint + callout + '<div class="pstage">' + sides + '</div>' + tray + '</div>';
+    return '<div class="card plan">' + head + hint + callout + '<div class="pstage">' + sides + '</div></div>';
   }
   // which block an amp's number lives in: the primary one, or the secondary one for a
   // single-port unit that was put on the secondary network
@@ -1210,7 +1209,7 @@
   }
   function dropTarget(el) {
     if (!el || !el.closest) return null;
-    return el.closest('.prack .pslot') || el.closest('.ptray');
+    return el.closest('.prack:not(.psingle) .pslot') || el.closest('.pside');
   }
   function onDragStart(e) {
     const sl = e.target.closest && e.target.closest('.pslot[data-dev]');
@@ -1249,7 +1248,7 @@
     if (!d) return;
     let rid = '';
     let k = -1;
-    if (!t.classList.contains('ptray')) { rid = t.dataset.rack || ''; k = t.dataset.slot != null ? +t.dataset.slot : -1; }
+    if (!t.classList.contains('pside')) { rid = t.dataset.rack || ''; k = t.dataset.slot != null ? +t.dataset.slot : -1; }
     if ((C.rackById(v, d.rack) ? d.rack : '') === rid && (rid ? d.slot === k : true)) return;
     pushUndo(v, 'move');
     C.placeDevice(v, id, rid, k);
@@ -1452,7 +1451,7 @@
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),
     'amp-new': (t) => {
       if (t.dataset.rack) return openAmpEditor({ rack: t.dataset.rack, slot: +t.dataset.slot });
-      if (t.dataset.loose) return openAmpEditor({ rack: '', slot: -1 });
+      if (t.dataset.loose) return openAmpEditor({ rack: '', slot: -1, side: t.dataset.side || '' });
       if (t.dataset.nozone) return openAmpEditor({ rack: '', slot: -1, noZone: true });
       const v = cur();
       if (!v) return;
