@@ -981,7 +981,7 @@
     const L = layoutOf();
     const pick = '<div class="layout-pick" role="group" aria-label="Layout"><span>Layout</span>' + LAYOUTS.map((x) => '<button type="button" data-act="plan-layout" data-layout="' + x[0] + '" aria-pressed="' + (x[0] === L) + '">' + x[1] + '</button>').join('') + '</div>';
     const deck = L === 'stage'
-      ? '<div class="pdeck" aria-hidden="true">STAGE</div><div class="pfoh"><b>FOH</b><span>LA NWM ' + esc(v.net.computer || '—') + '</span></div>'
+      ? '<div class="pdeck" aria-hidden="true">STAGE</div><div class="pdeck pdeck-foh" aria-hidden="true">FOH</div>'
       : '';
     const top = L === 'ipgrid' ? ipGridHtml(v, a) : '';
     return '<div class="card plan" data-layout="' + L + '">' + pick + head + hint + callout + top + '<div class="pstage">' + deck + sides + '</div>' + legend.replace('class="plan-legend"', 'class="plan-legend at-bottom"') + '</div>';

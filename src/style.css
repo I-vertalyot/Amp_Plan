@@ -1088,3 +1088,7 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
 .back-btn { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .back-btn .i { width: 16px; height: 16px; }
 .back-btn { width: max-content; align-self: flex-start; padding: 0 14px 0 10px; }
+/* FOH: a faint word at the bottom of the floor plan, like STAGE at the top */
+.plan[data-layout="stage"] .pstage { grid-template-areas: "L R"; padding-bottom: 110px; }
+.plan[data-layout="stage"] .pdeck.pdeck-foh { top: auto; bottom: 22px; }
+@media (max-width: 900px) { .plan[data-layout="stage"] .pstage { grid-template-areas: "L" "R"; padding-bottom: 80px; } .plan[data-layout="stage"] .pdeck.pdeck-foh { bottom: 18px; } }
