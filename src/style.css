@@ -1046,3 +1046,5 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 
 /* zone legend under the plan, in one row */
 .plan-legend.at-bottom { grid-column: auto; grid-row: auto; justify-self: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px 22px; padding-top: 14px; border-top: 1px dashed var(--putty-lo, #a69d86); }
+.psingle[data-did][draggable="true"] { cursor: grab; position: relative; }
+.psingle .pslot { cursor: pointer; }

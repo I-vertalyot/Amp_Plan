@@ -937,12 +937,15 @@
     return '<div class="prack""' + rackAttrs(r) + '>' + del + '<div class="prack-box" style="--n:' + r.size + '">' + name + inner + foot + '</div></div>';
   }
   // an amp outside the racks, drawn as its own one-amp case
+  // a single amp's case: drag it anywhere (like a rack), × deletes the amp
+  const singleAttrs = (d) => ' data-did="' + esc(d.id) + '"' + (S.readOnly ? '' : ' draggable="true" title="Drag to move ' + esc(d.name || d.model) + '"');
+  const singleDel = (d) => (S.readOnly ? '' : '<button type="button" class="prack-del" data-act="amp-del" data-dev="' + esc(d.id) + '" title="Delete ' + esc(d.name || d.model) + '" aria-label="Delete ' + esc(d.name || d.model) + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>');
   function singleHtml(v, a, d) {
     const m = C.modelOf(d.model).label;
     const L = layoutOf();
-    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack psingle plane" data-did="' + esc(d.id) + '"><div class="prack-name is-static"><span>Single</span><small>' + esc(m) + '</small></div><div class="plane-slots">' + ampChip(v, a, d, '') + '</div></div>';
-    if (L === 'fronts' || L === 'night') return '<div class="prack psingle ' + (L === 'fronts' ? 'pfr-single' : 'pnr-single') + '" data-did="' + esc(d.id) + '"><div class="prack-name is-static"><span>' + esc((d.name || m).slice(0, 22)) + '</span><small>single</small></div>' + ampChip(v, a, d, '') + '</div>';
-    return '<div class="prack psingle" data-did="' + esc(d.id) + '"><div class="prack-box" style="--n:1"><div class="prack-name is-static" title="' + esc(m) + '"><span>' + esc((d.name || m).slice(0, 18)) + '</span><small>' + esc(m) + '</small></div>' + ampChip(v, a, d, '') + '</div></div>';
+    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack psingle plane"' + singleAttrs(d) + '>' + singleDel(d) + '<div class="prack-name is-static"><span>Single</span><small>' + esc(m) + '</small></div><div class="plane-slots">' + ampChip(v, a, d, '') + '</div></div>';
+    if (L === 'fronts' || L === 'night') return '<div class="prack psingle ' + (L === 'fronts' ? 'pfr-single' : 'pnr-single') + '"' + singleAttrs(d) + '>' + singleDel(d) + '<div class="prack-name is-static"><span>' + esc((d.name || m).slice(0, 22)) + '</span><small>single</small></div>' + ampChip(v, a, d, '') + '</div>';
+    return '<div class="prack psingle"' + singleAttrs(d) + '>' + singleDel(d) + '<div class="prack-box" style="--n:1"><div class="prack-name is-static" title="' + esc(m) + '"><span>' + esc((d.name || m).slice(0, 18)) + '</span><small>' + esc(m) + '</small></div>' + ampChip(v, a, d, '') + '</div></div>';
   }
   function planHtml(v, a) {
     const ro = S.readOnly;
@@ -1290,7 +1293,8 @@
     return lanes ? e.clientY > b.top + b.height / 2 : e.clientX > b.left + b.width / 2;
   }
   function onDragStart(e) {
-    const sl = e.target.closest && e.target.closest('.pslot[data-dev]');
+    const one = e.target.closest && !e.target.closest('.pslot') && e.target.closest('.psingle[data-did]');
+    const sl = one ? one.querySelector('.pslot[data-dev]') : e.target.closest && e.target.closest('.pslot[data-dev]');
     const rk = !sl && e.target.closest && e.target.closest('.prack[data-rid]');
     if (rk && !S.readOnly) {
       S.dragRack = rk.dataset.rid;
@@ -1604,6 +1608,7 @@
       toast('Added ' + r.name + ' on the ' + C.SIDE_LABEL[r.side].toLowerCase() + '. Click its name to change type or slots.', undoAction());
     },
     'rack-edit': (t) => openRackEditor(t.dataset.rack),
+    'amp-del': (t) => deleteDevices([t.dataset.dev]),
     'rack-del': (t) => {
       const v = cur();
       const r = v && C.rackById(v, t.dataset.rack);
