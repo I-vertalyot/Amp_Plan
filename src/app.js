@@ -647,7 +647,7 @@
   function devicesHtml(v, a) {
     if (S.devView === 'racks') {
       const tools = '<div class="toolbar"><div class="tb-left">' + viewSwitch() +
-        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="rack-add">Add empty rack</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button>' + (v.devices.some((d) => C.isAmpModel(d.model) && !C.rackById(v, d.rack)) && (v.racks || []).length ? '<button class="btn" data-act="rack-pack">Pack single amps into racks</button>' : '') + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
+        (S.readOnly ? '' : (v.devices.some((d) => C.isAmpModel(d.model) && !C.rackById(v, d.rack)) && (v.racks || []).length ? '<button class="btn" data-act="rack-pack">Pack single amps into racks</button>' : '') + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
         '</div></div>';
       return tools + planHtml(v, a);
     }
