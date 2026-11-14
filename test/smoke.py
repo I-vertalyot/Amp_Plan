@@ -88,16 +88,14 @@ def run(p, label, mock, dark=False):
     # devices tab opens on the rack view (the amp plan)
     page.click('#tab-devices')
     page.wait_for_selector('.plan')
-    print(label, 'grid cells (monitors):', page.locator('.pcell').count())
-    # the side-by-side steps below use the Lanes layout (racks grouped by side)
-    page.click('[data-act="plan-layout"][data-layout="lanes"]')
-    page.wait_for_timeout(200)
+    print(label, 'grid cells:', page.locator('.pcell').count(), '| layout picker gone:', page.locator('[data-act="plan-layout"]').count() == 0)
+    rack = lambda name: page.locator('.pcell', has_text=name).first
     page.screenshot(path=str(SHOTS / f'{label}-3a-racks.png'), full_page=True)
     racks_txt = lambda: [' | '.join(page.locator('.prack:not(.psingle)').nth(k).inner_text().split('\n')) for k in range(page.locator('.prack:not(.psingle)').count())]
     print(label, 'racks:', racks_txt())
     print(label, 'singles:', page.locator('.psingle .pslot[data-dev]').all_inner_texts())
     # a linked K2 amp: preset is locked, .21 is taken by Main R, pick .19
-    page.locator('.pside-L .prack').first.locator('.pslot[data-dev]').first.click()
+    rack('RAK 1').locator('.pslot[data-dev]').first.click()
     page.wait_for_selector('#ae-ip')
     print(label, 'editor title:', page.inner_text('#m-title'), '| locked:', page.locator('#ae-locked').is_visible(), '| preset select hidden:', page.locator('#ae-preset').is_hidden())
     opt21 = page.locator('#ae-ip option[value="21"]')
@@ -109,7 +107,7 @@ def run(p, label, mock, dark=False):
     page.screenshot(path=str(SHOTS / f'{label}-3b-amp-editor.png'))
     page.click('.modal-f .btn-primary')
     page.wait_for_timeout(200)
-    first = page.locator('.pside-L .prack').first.locator('.pslot[data-dev]').first.inner_text()
+    first = rack('RAK 1').locator('.pslot[data-dev]').first.inner_text()
     print(label, 'after .19:', first)
     assert first == 'K2 - 19', 'ip change not shown'
     # the spare amp in the tray: choose a preset and a number, then pack it
@@ -126,7 +124,7 @@ def run(p, label, mock, dark=False):
     page.wait_for_timeout(200)
     print(label, 'after pack:', racks_txt()[-2:], '| tray:', page.locator('.psingle .pslot[data-dev]').count())
     # unlink one Main R amp to Kara II on its own
-    page.locator('.pside-R .prack').first.locator('.pslot[data-dev]').nth(1).click()
+    rack('RAK 3').locator('.pslot[data-dev]').nth(1).click()
     page.wait_for_selector('#ae-unlock')
     page.click('#ae-unlock')
     page.select_option('#ae-preset', 'Kara II')
@@ -135,14 +133,14 @@ def run(p, label, mock, dark=False):
     page.click('.modal-f .btn-primary')
     page.wait_for_timeout(200)
     print(label, 'toast:', page.locator('.toast').last.inner_text().replace('\n', ' '))
-    right_txt = lambda: page.locator('.pside-R .prack').first.inner_text().replace('\n', ' | ')
+    right_txt = lambda: rack('RAK 3').inner_text().replace('\n', ' | ')
     print(label, 'right rack:', right_txt(), '| pill:', page.inner_text('.pill').replace('\n', ' | '))
     page.locator('.toast').last.locator('button').click()
     page.wait_for_timeout(200)
     print(label, 'after undo right rack:', right_txt())
     # drag the second Left K2 rack's amp into an empty slot of rack 1? rack 1 is full: drag into rack 2's empty slot
-    src = page.locator('.pside-L .prack').first.locator('.pslot[data-dev]').nth(2)
-    dst = page.locator('.pside-L .prack:not(.psingle) .pslot.p-empty').first
+    src = rack('RAK 1').locator('.pslot[data-dev]').nth(2)
+    dst = page.locator('.pcell .prack:not(.psingle) .pslot.p-empty').first
     vp = page.viewport_size
     page.set_viewport_size({'width': vp['width'], 'height': 1600})  # both racks on screen for the drag
     src.drag_to(dst)
@@ -150,7 +148,7 @@ def run(p, label, mock, dark=False):
     page.set_viewport_size(vp)
     print(label, 'after drag left:', racks_txt()[:2])
     # empty slot -> new amp
-    page.locator('.pside-L .prack').first.locator('.pslot.p-empty').first.click()
+    rack('RAK 1').locator('.pslot.p-empty').first.click()
     page.wait_for_selector('#ae-preset')
     page.select_option('#ae-preset', 'K1')
     page.wait_for_timeout(50)
@@ -159,7 +157,7 @@ def run(p, label, mock, dark=False):
     page.wait_for_timeout(200)
     print(label, 'after new amp:', racks_txt()[0], '| pill:', page.inner_text('.pill').replace('\n', ' | '))
     # rack editor
-    page.locator('.prack-name').first.click()
+    rack('RAK 1').locator('.prack-name').click()
     page.wait_for_selector('#re-name')
     page.fill('#re-name', 'SL A')
     page.click('.modal-f .btn-primary')

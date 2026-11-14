@@ -3594,7 +3594,8 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   function zoneColorOf(v, d) { const z = v.zones.find((x) => x.id === d.zone); return z ? z.color : 8; }
   // ---- layouts of the rack view; every layout keeps click-to-edit and drag between slots
   const LAYOUTS = [['monitors', 'Monitors'], ['stage', 'Stage plot'], ['fronts', 'Rack fronts'], ['lanes', 'Lanes'], ['ipgrid', 'IP grid'], ['night', 'Show night']];
-  const layoutOf = () => (LAYOUTS.some((x) => x[0] === prefs.planLayout) ? prefs.planLayout : 'monitors');
+  // one layout now: the stage plot on the free grid (the layout picker was removed)
+  const layoutOf = () => 'stage';
   const hostOf = (d) => { const p = C.parseIp(d.ip); return p != null ? C.host(p) : null; };
   function slotInner(v, a, d, L) {
     const pre = C.presetOf(v, d) || C.modelOf(d.model).label;
@@ -3668,7 +3669,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       ? '<div class="plan-callout"><div><b>' + esc(C.plural(loose.length, 'amp')) + ' not in racks yet</b><span>Pack into racks puts each zone’s amps on its side of the stage, filling L-Acoustics racks of 3. You can move them afterwards.</span></div><button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button></div>'
       : '';
     const L = layoutOf();
-    const pick = '<div class="layout-pick" role="group" aria-label="Layout"><span>Layout</span>' + LAYOUTS.map((x) => '<button type="button" data-act="plan-layout" data-layout="' + x[0] + '" aria-pressed="' + (x[0] === L) + '">' + x[1] + '</button>').join('') + '</div>';
+    const pick = '';
     const deck = L === 'stage'
       ? '<div class="pdeck" aria-hidden="true">STAGE</div><div class="pdeck pdeck-foh" aria-hidden="true">FOH</div>'
       : '';
