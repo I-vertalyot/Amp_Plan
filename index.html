@@ -725,6 +725,140 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .net.is-open .net-brief { visibility: hidden; }
 .net-edit { font-size: 13px; font-weight: 600; color: var(--ink-2); flex: none; }
 
+/* ================================================================ Look switch */
+.skin-pick { display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 12px; color: var(--muted); }
+.skin-pick span { margin-right: auto; }
+.skin-pick button { height: 24px; padding: 0 9px; border-radius: 5px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; }
+.skin-pick button[aria-pressed="true"] { background: var(--orange); color: #000; border-color: transparent; }
+
+/* ================================================================ "Office '96" look
+   Taken from a mid-90s open-plan office: putty-beige CRT monitors and keyboards, blue-grey
+   cubicle fabric, carpet grey, flat fluorescent light, a green-phosphor screen.
+   Bevelled 3D controls, system-font UI, monospace for addresses, a faint film grain.
+   Same layout and behaviour as the modern look; only paint changes. */
+:root[data-skin="retro"] {
+  color-scheme: light;
+  --putty: #ddd5c1; --putty-hi: #f3eee0; --putty-lo: #a69d86; --putty-dk: #6f6855;
+  --fabric: #8b969c; --fabric-dk: #5f6a70; --carpet: #b9bcb6; --crt: #26302a; --phosphor: #a6e3a1;
+  --bg: #c9cbc4;
+  --surface: #ece6d6;
+  --surface-2: #e2dbc8;
+  --ink: #1d1f1c;
+  --ink-2: #39403d;
+  --muted: #6b6f66;
+  --line: #a69d86;
+  --line-2: #cfc7b2;
+  --accent: #3e5568;
+  --accent-ink: #f3eee0;
+  --accent-soft: #d5dbd8;
+  --hi: #3e5568;
+  --hi-ink: #f3eee0;
+  --lcd-bg: #26302a;
+  --lcd-ink: #a6e3a1;
+  --font-body: Tahoma, Verdana, "Segoe UI", "MS Sans Serif", Geneva, sans-serif;
+  --font-display: "Arial Narrow", "Helvetica Neue Condensed", Tahoma, sans-serif;
+  --font-mono: "Lucida Console", "Courier New", Consolas, monospace;
+  --radius: 2px;
+  --bevel-out: inset 1px 1px 0 var(--putty-hi), inset -1px -1px 0 var(--putty-dk), inset -2px -2px 0 var(--putty-lo);
+  --bevel-in: inset 1px 1px 0 var(--putty-dk), inset 2px 2px 0 var(--putty-lo), inset -1px -1px 0 var(--putty-hi);
+  --side-l: #3e5568; --side-r: #8a5a2b; --side-c: #4a4f4a;
+}
+:root[data-skin="retro"] body {
+  background-color: var(--bg);
+  /* fluorescent ceiling glow fading to carpet, plus film grain */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #e9ebe4 0, #c9cbc4 260px, #bfc1ba 100%);
+  background-attachment: fixed;
+}
+/* sidebar: cubicle partition fabric with a putty top rail */
+:root[data-skin="retro"] .rail {
+  background: var(--fabric);
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0 1px, transparent 1px 3px);
+  color: #f4f1e8; border-right: 3px solid var(--putty-lo); box-shadow: inset -1px 0 0 var(--putty-hi);
+  --ink: #f6f3ea; --ink-2: #e7e3d6; --muted: #dfe3e2; --line: #6b767c; --surface: #7e898f; --surface-2: #75818a; --accent: var(--putty); --accent-ink: #1d1f1c; --accent-soft: rgba(0,0,0,.14);
+}
+:root[data-skin="retro"] .rail .brand { border-top: 6px solid var(--putty); background: rgba(0,0,0,.08); }
+:root[data-skin="retro"] .brand-name { font-family: var(--font-display); letter-spacing: .04em; }
+:root[data-skin="retro"] .brand-mark { background: var(--crt); box-shadow: 0 0 0 2px var(--putty), 0 0 0 3px var(--putty-dk); border-radius: 3px; }
+:root[data-skin="retro"] .brand-mark i { background: var(--phosphor); box-shadow: 0 0 6px var(--phosphor); }
+:root[data-skin="retro"] .rail .venue-item.is-cur { background: var(--putty); color: #1d1f1c; box-shadow: var(--bevel-out); }
+:root[data-skin="retro"] .rail .venue-item.is-cur .vi-name { color: #1d1f1c; }
+:root[data-skin="retro"] .rail .venue-item.is-cur * { color: #1d1f1c; }
+:root[data-skin="retro"] .rail .btn:not(.btn-primary), :root[data-skin="retro"] .rail .btn-primary { background: var(--putty); color: #1d1f1c; }
+:root[data-skin="retro"] .rail input { background: #f3eee0; color: #1d1f1c; box-shadow: var(--bevel-in); border-color: transparent; }
+:root[data-skin="retro"] .skin-pick { color: #e7e3d6; }
+:root[data-skin="retro"] .skin-pick button { border-color: #6b767c; }
+:root[data-skin="retro"] .skin-pick button[aria-pressed="true"] { background: var(--putty); color: #1d1f1c; box-shadow: var(--bevel-in); }
+:root[data-skin="retro"] .topbar { background: var(--fabric); color: #f4f1e8; border-bottom: 3px solid var(--putty-lo); }
+
+/* cards: monitor housings, putty plastic with a bevel */
+:root[data-skin="retro"] .card, :root[data-skin="retro"] .summary, :root[data-skin="retro"] .modal {
+  background: var(--surface); border: 1px solid var(--putty-dk); border-radius: 4px;
+  box-shadow: inset 1px 1px 0 var(--putty-hi), inset -1px -1px 0 var(--putty-lo), 0 2px 0 rgba(0,0,0,.12);
+}
+:root[data-skin="retro"] .card-h h2, :root[data-skin="retro"] .vhead h1 { font-family: var(--font-display); letter-spacing: .02em; }
+:root[data-skin="retro"] .vhead h1 { color: #1d1f1c; }
+
+/* buttons: bevelled keyboard keys */
+:root[data-skin="retro"] .btn, :root[data-skin="retro"] .btn-mini {
+  background: var(--putty); color: #1d1f1c; border: 1px solid var(--putty-dk); border-radius: 2px; box-shadow: var(--bevel-out); font-family: var(--font-body);
+}
+:root[data-skin="retro"] .btn:hover, :root[data-skin="retro"] .btn-mini:hover { background: #e6dfcc; border-color: var(--putty-dk); }
+:root[data-skin="retro"] .btn:active, :root[data-skin="retro"] .btn-mini:active { box-shadow: var(--bevel-in); transform: translateY(1px); }
+:root[data-skin="retro"] .btn-primary { background: #3e5568; color: #f3eee0; border-color: #222f39; box-shadow: inset 1px 1px 0 #7c93a5, inset -1px -1px 0 #1b252d; }
+:root[data-skin="retro"] .btn-primary:hover { background: #4a6479; filter: none; }
+:root[data-skin="retro"] .btn-quiet { background: transparent; box-shadow: none; border-color: transparent; }
+:root[data-skin="retro"] .btn-quiet:hover { background: var(--surface-2); box-shadow: var(--bevel-out); }
+:root[data-skin="retro"] .btn.danger, :root[data-skin="retro"] .btn-quiet.danger { color: #9b2a1f; }
+
+/* inputs: sunken fields */
+:root[data-skin="retro"] .field input, :root[data-skin="retro"] .field select, :root[data-skin="retro"] .field textarea,
+:root[data-skin="retro"] input[type="text"], :root[data-skin="retro"] input[type="number"], :root[data-skin="retro"] input[type="search"], :root[data-skin="retro"] input[type="date"], :root[data-skin="retro"] select {
+  background: #fbf8ef; color: #1d1f1c; border: 1px solid transparent; border-radius: 0; box-shadow: var(--bevel-in);
+}
+:root[data-skin="retro"] .join .prefix { background: var(--surface-2); box-shadow: var(--bevel-in); border-radius: 0; }
+
+/* tabs: file-folder tabs */
+:root[data-skin="retro"] .tabs { border-bottom: 2px solid var(--putty-dk); gap: 2px; }
+:root[data-skin="retro"] .tab { background: var(--surface-2); border: 1px solid var(--putty-dk); border-bottom: 0; border-radius: 4px 4px 0 0; box-shadow: inset 1px 1px 0 var(--putty-hi); margin-bottom: -2px; }
+:root[data-skin="retro"] .tab[aria-selected="true"] { background: var(--surface); border-bottom: 2px solid var(--surface); color: #1d1f1c; }
+
+/* status strip and the scan-range readout: green phosphor CRT */
+:root[data-skin="retro"] .lcd, :root[data-skin="retro"] .mono.lcd { background: var(--crt); color: var(--phosphor); text-shadow: 0 0 4px rgba(166,227,161,.55); border-radius: 3px; }
+:root[data-skin="retro"] .summary .fact b, :root[data-skin="retro"] .summary .fact strong { font-family: var(--font-mono); }
+:root[data-skin="retro"] .tbl th, :root[data-skin="retro"] .stbl th { background: var(--surface-2); color: var(--ink-2); font-family: var(--font-body); box-shadow: inset 0 -1px 0 var(--putty-dk); }
+:root[data-skin="retro"] .tbl tr:nth-child(even) td { background: rgba(166,157,134,.08); }
+
+/* amp plan: racks become CRT monitors on putty bezels */
+:root[data-skin="retro"] .pt-amp { color: #3e5568; }
+:root[data-skin="retro"] .pt-plan { color: #8a5a2b; }
+:root[data-skin="retro"] .pside-tag { border-radius: 2px; box-shadow: inset 1px 1px 0 rgba(255,255,255,.3), inset -1px -1px 0 rgba(0,0,0,.35); color: #f3eee0; }
+:root[data-skin="retro"] .pside-L .pside-tag { background: #3e5568; color: #f3eee0; }
+:root[data-skin="retro"] .pside-R .pside-tag { background: #8a5a2b; color: #f3eee0; }
+:root[data-skin="retro"] .prack-box {
+  background: radial-gradient(120% 90% at 50% 40%, #2f3b33 0, #1b231e 100%);
+  border-radius: 10px / 14px; border: 7px solid var(--putty);
+  box-shadow: 0 0 0 1px var(--putty-dk), inset 0 0 14px rgba(0,0,0,.6), 0 3px 0 rgba(0,0,0,.18);
+  padding: 7px;
+}
+:root[data-skin="retro"] .prack-name { color: var(--phosphor); opacity: .8; font-family: var(--font-mono); }
+:root[data-skin="retro"] .prack-name small { color: #6f9a6c; }
+:root[data-skin="retro"] .pslot { border-radius: 1px; font-family: var(--font-mono); font-weight: 700; font-size: 12px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+:root[data-skin="retro"] .pslot.p-empty { border-color: #4f6a52; color: #6f9a6c; }
+:root[data-skin="retro"] .pslot.p-err { box-shadow: 0 0 0 2px #d84b3a; }
+:root[data-skin="retro"] .pslot.p-warn { box-shadow: 0 0 0 2px #e0b23a; }
+:root[data-skin="retro"] .ptray { border: 2px dashed var(--putty-dk); border-radius: 2px; background: rgba(255,255,255,.18); }
+:root[data-skin="retro"] .rack { background: radial-gradient(120% 90% at 50% 40%, #2f3b33 0, #1b231e 100%); border: 6px solid var(--putty); border-radius: 9px / 12px; box-shadow: 0 0 0 1px var(--putty-dk), inset 0 0 12px rgba(0,0,0,.6); }
+:root[data-skin="retro"] .plan-callout { background: #f6efd2; border: 1px solid #b9a768; border-radius: 2px; box-shadow: 2px 2px 0 rgba(0,0,0,.12); }
+:root[data-skin="retro"] .toast { background: #fff8c4; color: #1d1f1c; border: 1px solid #b9a768; border-radius: 0; box-shadow: 2px 2px 0 rgba(0,0,0,.18); }
+:root[data-skin="retro"] .modal-h { background: linear-gradient(90deg, #3e5568, #6f8798); color: #f3eee0; margin: -1px -1px 0; border-radius: 3px 3px 0 0; }
+:root[data-skin="retro"] .modal-h h2 { color: #f3eee0; font-family: var(--font-body); font-size: 14px; letter-spacing: 0; }
+:root[data-skin="retro"] .modal-h .icon-btn { color: #f3eee0; }
+:root[data-skin="retro"] .net-toggle .chev { color: var(--ink-2); }
+:root[data-skin="retro"] :focus-visible { outline: 1px dotted #1d1f1c; outline-offset: 2px; }
+:root[data-skin="retro"] .rail :focus-visible { outline-color: #fff; }
+
 </style>
 </head>
 <body>
@@ -740,6 +874,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     </div>
     <div class="rail-search"><label class="sr-only" for="venue-q">Search venues</label><input id="venue-q" type="search" placeholder="Search venues" autocomplete="off"></div>
     <div class="venue-scroll" id="venue-scroll"></div>
+    <div class="skin-pick" role="group" aria-label="Look"><span>Look</span><button type="button" data-act="skin" data-skin="retro">Office ’96</button><button type="button" data-act="skin" data-skin="modern">Modern</button></div>
     <div class="rail-foot" id="store-status" role="status"><span class="dot busy"></span><span>Opening saved plans…</span></div>
   </aside>
   <div class="rail-shade" data-act="rail-close"></div>
@@ -2072,6 +2207,14 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 
   const DEFAULT_COLS = { location: true, port: true, serial: false, notes: true };
   const prefs = Object.assign({ sep: '', last: '', devView: 'racks' }, safeJson(lsGet(LS_PREFS)) || {});
+  // the look: "retro" (beige 90s office, default) or "modern" (navy and orange)
+  function applySkin() {
+    const sk = prefs.skin === 'modern' ? 'modern' : 'retro';
+    document.documentElement.dataset.skin = sk;
+    document.querySelectorAll('[data-act="skin"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.skin === sk)));
+  }
+  applySkin();
+  document.addEventListener('DOMContentLoaded', applySkin);
   prefs.cols = Object.assign({}, DEFAULT_COLS, prefs.cols || {});
   const savePrefs = () => lsSet(LS_PREFS, JSON.stringify(prefs));
 
@@ -3448,6 +3591,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     'tab': (t) => setTab(t.dataset.tab),
     'add-devices': () => openAddDevices(),
     'add-speakers': () => openAddSpeakers(),
+    'skin': (t) => { prefs.skin = t.dataset.skin; savePrefs(); applySkin(); },
     'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); },
     'dev-view': (t) => { S.devView = t.dataset.view === 'list' ? 'list' : 'racks'; prefs.devView = S.devView; savePrefs(); renderTab(); },
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),
