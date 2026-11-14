@@ -895,12 +895,27 @@
 
   // ---------------------------------------------------------------- rack view (Devices & IPs)
   function zoneColorOf(v, d) { const z = v.zones.find((x) => x.id === d.zone); return z ? z.color : 8; }
+  // ---- layouts of the rack view; every layout keeps click-to-edit and drag between slots
+  const LAYOUTS = [['monitors', 'Monitors'], ['stage', 'Stage plot'], ['fronts', 'Rack fronts'], ['lanes', 'Lanes'], ['ipgrid', 'IP grid'], ['night', 'Show night']];
+  const layoutOf = () => (LAYOUTS.some((x) => x[0] === prefs.planLayout) ? prefs.planLayout : 'monitors');
+  const hostOf = (d) => { const p = C.parseIp(d.ip); return p != null ? C.host(p) : null; };
+  function slotInner(v, a, d, L) {
+    const pre = C.presetOf(v, d) || C.modelOf(d.model).label;
+    const h = hostOf(d);
+    if (L === 'fronts') return '<i class="pf-stripe" aria-hidden="true"></i><span class="pf-txt"><b>' + esc(pre) + '</b><small>' + esc(C.modelOf(d.model).label) + '</small></span><span class="pf-lcd">' + (h != null ? '.' + h : '--') + '</span>';
+    if (L === 'night') return '<i class="pf-stripe" aria-hidden="true"></i><span class="pn-top"><b>' + esc(pre) + '</b><span class="pn-st st-' + esc(d.status) + '"><i aria-hidden="true"></i>' + esc(C.STATUS_LABEL[d.status] || '') + '</span></span><span class="pn-ip">' + (h != null ? '.' + h : '—') + '</span>';
+    return esc(C.slotLabel(v, d, a.info));
+  }
   function ampChip(v, a, d, extra) {
+    const L = layoutOf();
     const sev = C.worst(a.byDev.get(d.id) || []);
     const lab = C.slotLabel(v, d, a.info);
     const tip = [d.name, C.modelOf(d.model).label, d.ip || 'no IP yet'].filter(Boolean).join(' · ');
+    const c = zoneColorOf(v, d);
+    const vars = '--zc:var(--z' + c + ');--zi:var(--z' + (c === 3 ? '3' : '') + '-ink)';
+    const paint = L === 'fronts' || L === 'night' ? vars : vars + ';background:var(--z' + c + ');color:var(--z' + (c === 3 ? '3' : '') + '-ink)';
     return '<div class="pslot' + (sev === 'error' ? ' p-err' : sev === 'warn' ? ' p-warn' : '') + '" role="button" tabindex="0"' + (S.readOnly ? '' : ' draggable="true"') +
-      ' data-act="amp-edit" data-dev="' + esc(d.id) + '"' + (extra || '') + ' style="background:var(--z' + zoneColorOf(v, d) + ');color:var(--z' + (zoneColorOf(v, d) === 3 ? '3' : '') + '-ink)" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + esc(lab) + '</div>';
+      ' data-act="amp-edit" data-dev="' + esc(d.id) + '"' + (extra || '') + ' style="' + paint + '" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + slotInner(v, a, d, L) + '</div>';
   }
   function rackBoxHtml(v, a, r) {
     const ro = S.readOnly;
@@ -910,12 +925,22 @@
     const sw = v.devices.filter((d) => d.rack === r.id && !C.isAmpModel(d.model));
     const foot = sw.length ? '<div class="prack-foot">' + esc(sw.map((d) => d.model + (C.parseIp(d.ip) != null ? ' .' + C.host(C.parseIp(d.ip)) : '')).join(' · ')) + '</div>' : '';
     const del = ro ? '' : '<button type="button" class="prack-del" data-act="rack-del" data-rack="' + esc(r.id) + '" title="Delete ' + esc(r.name) + '" aria-label="Delete ' + esc(r.name) + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>';
-    return '<div class="prack">' + del + '<div class="prack-box" style="--n:' + r.size + '"><button type="button" class="prack-name" data-act="rack-edit" data-rack="' + esc(r.id) + '"' + (ro ? ' disabled' : '') + ' title="' + esc((r.type || 'Custom rack') + (ro ? '' : ' · click to edit')) + '"><span>' + esc(r.name) + '</span>' + (r.type ? '<small>' + esc(r.type) + '</small>' : '') + '</button>' +
-      inner + foot + '</div></div>';
+    const name = '<button type="button" class="prack-name" data-act="rack-edit" data-rack="' + esc(r.id) + '"' + (ro ? ' disabled' : '') + ' title="' + esc((r.type || 'Custom rack') + (ro ? '' : ' · click to edit')) + '"><span>' + esc(r.name) + '</span>' + (r.type ? '<small>' + esc(r.type) + '</small>' : '') + '</button>';
+    const L = layoutOf();
+    if (L === 'fronts') {
+      const ls = sw.map((d) => '<div class="pfr-ls"><span>' + esc(d.model) + '</span><span>' + (hostOf(d) != null ? '.' + hostOf(d) : '') + '</span></div>').join('');
+      return '<div class="prack pfr">' + del + name + '<div class="pfr-body"><i class="pfr-ear" aria-hidden="true"></i><div class="pfr-slots">' + inner + ls + '</div><i class="pfr-ear" aria-hidden="true"></i></div></div>';
+    }
+    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack plane">' + del + name + '<div class="plane-slots">' + inner + '</div>' + (sw.length ? '<span class="plane-foot">' + esc(sw.map((d) => d.model).join(' · ')) + '</span>' : '') + '</div>';
+    if (L === 'night') return '<div class="prack pnr">' + del + name + '<div class="pnr-grid">' + inner + '</div></div>';
+    return '<div class="prack">' + del + '<div class="prack-box" style="--n:' + r.size + '">' + name + inner + foot + '</div></div>';
   }
   // an amp outside the racks, drawn as its own one-amp case
   function singleHtml(v, a, d) {
     const m = C.modelOf(d.model).label;
+    const L = layoutOf();
+    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack psingle plane"><div class="prack-name is-static"><span>Single</span><small>' + esc(m) + '</small></div><div class="plane-slots">' + ampChip(v, a, d, '') + '</div></div>';
+    if (L === 'fronts' || L === 'night') return '<div class="prack psingle ' + (L === 'fronts' ? 'pfr-single' : 'pnr-single') + '"><div class="prack-name is-static"><span>' + esc((d.name || m).slice(0, 22)) + '</span><small>single</small></div>' + ampChip(v, a, d, '') + '</div>';
     return '<div class="prack psingle"><div class="prack-box" style="--n:1"><div class="prack-name is-static" title="' + esc(m) + '"><span>' + esc((d.name || m).slice(0, 18)) + '</span><small>' + esc(m) + '</small></div>' + ampChip(v, a, d, '') + '</div></div>';
   }
   function planHtml(v, a) {
@@ -943,7 +968,47 @@
     const callout = !ro && !racks.length && loose.length
       ? '<div class="plan-callout"><div><b>' + esc(C.plural(loose.length, 'amp')) + ' not in racks yet</b><span>Pack into racks puts each zone’s amps on its side of the stage, filling L-Acoustics racks of 3. You can move them afterwards.</span></div><button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button></div>'
       : '';
-    return '<div class="card plan">' + head + hint + callout + '<div class="pstage">' + sides + '</div></div>';
+    const L = layoutOf();
+    const pick = '<div class="layout-pick" role="group" aria-label="Layout"><span>Layout</span>' + LAYOUTS.map((x) => '<button type="button" data-act="plan-layout" data-layout="' + x[0] + '" aria-pressed="' + (x[0] === L) + '">' + x[1] + '</button>').join('') + '</div>';
+    const deck = L === 'stage'
+      ? '<div class="pdeck" aria-hidden="true">STAGE</div><div class="pfoh"><b>FOH</b><span>LA NWM ' + esc(v.net.computer || '—') + '</span></div>'
+      : '';
+    const top = L === 'ipgrid' ? ipGridHtml(v, a) : '';
+    return '<div class="card plan" data-layout="' + L + '">' + pick + head + hint + callout + top + '<div class="pstage">' + deck + sides + '</div></div>';
+  }
+  // every address of the network block in rows of ten; used numbers coloured by zone, free ones add an amp there
+  function ipGridHtml(v, a) {
+    const i = a.info;
+    if (!i.ok) return '<p class="muted">Set the network first.</p>';
+    let maxUsed = 0;
+    for (let h = 1; h <= C.MAX_HOST; h++) if (a.occ.has(i.block + h)) maxUsed = h;
+    const as = v.net.assign;
+    const zoneEnd = as.scheme === 'zones' ? as.start + v.zones.length * as.size - 1 : 0;
+    const last = Math.min(C.MAX_HOST, Math.max(60, Math.ceil((Math.max(maxUsed, zoneEnd) + 1) / 10) * 10));
+    let rows = '';
+    let used = 0;
+    for (let r0 = 1; r0 <= last; r0 += 10) {
+      const zk = as.scheme === 'zones' ? v.zones.findIndex((z, k) => as.start + k * as.size >= r0 && as.start + k * as.size < r0 + 10) : -1;
+      const label = zk >= 0 ? v.zones[zk].name : r0 === 1 ? 'Infrastructure' : '';
+      let cells = '';
+      for (let h = r0; h < r0 + 10 && h <= last; h++) {
+        const occ = a.occ.get(i.block + h) || [];
+        const o = occ.find((x) => x.type === 'dev');
+        const d = o ? v.devices.find((x) => x.id === o.id) : null;
+        if (occ.length) used++;
+        if (d) {
+          const c = zoneColorOf(v, d);
+          const amp = C.isAmpModel(d.model);
+          cells += '<button type="button" class="ipc2' + (occ.length > 1 ? ' p-err' : '') + '"' + (amp && !S.readOnly ? ' data-act="amp-edit" data-dev="' + esc(d.id) + '"' : ' disabled') + ' style="background:var(--z' + c + ');color:var(--z' + (c === 3 ? '3' : '') + '-ink)" title="' + esc(d.name + ' · ' + d.ip) + '"><b>.' + h + '</b><span>' + esc(C.presetOf(v, d) || C.modelOf(d.model).label) + '</span></button>';
+        } else if (occ.length) {
+          cells += '<button type="button" class="ipc2 is-sys" disabled title="' + esc(occ[0].type === 'pc' ? 'Control computer' : 'Gateway') + '"><b>.' + h + '</b><span>' + (occ[0].type === 'pc' ? 'NWM' : 'GW') + '</span></button>';
+        } else {
+          cells += '<button type="button" class="ipc2 is-free"' + (S.readOnly ? ' disabled' : ' data-act="amp-new" data-loose="1" data-host="' + h + '"') + ' title="Add an amp on .' + h + '"><b>.' + h + '</b></button>';
+        }
+      }
+      rows += '<div class="ipg-row"><div class="ipg-lab">' + esc(label) + '<small>.' + r0 + '–.' + Math.min(r0 + 9, last) + '</small></div><div class="ipg-cells">' + cells + '</div></div>';
+    }
+    return '<section class="ipg" aria-label="Addresses"><div class="ipg-head mono">' + esc(i.blockStr) + '.x · click a free number to add an amp there</div>' + rows + '</section>';
   }
   // which block an amp's number lives in: the primary one, or the secondary one for a
   // single-port unit that was put on the secondary network
@@ -1028,7 +1093,7 @@
     const b0 = ampBlock(v, i, d, model0);
     const ip0 = d ? C.parseIp(d.ip) : null;
     const inBlock = ip0 != null && b0.block != null && C.blockOf(ip0) === b0.block;
-    const host0 = inBlock ? C.host(ip0) : isNew ? firstFreeHost(v, a, zone0, model0) : '';
+    const host0 = inBlock ? C.host(ip0) : isNew ? (o.host || firstFreeHost(v, a, zone0, model0)) : '';
     const preset0 = g ? g.model : d ? d.preset || '' : '';
     const presetSel = C.SPEAKER_MAP[preset0] ? preset0 : preset0 ? 'Custom' : '';
     const zname = g ? (v.zones.find((z) => z.id === g.zone) || {}).name || '' : '';
@@ -1446,12 +1511,13 @@
     'tab': (t) => setTab(t.dataset.tab),
     'add-devices': () => openAddDevices(),
     'add-speakers': () => openAddSpeakers(),
+    'plan-layout': (t) => { prefs.planLayout = t.dataset.layout; savePrefs(); renderTab(); },
     'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); },
     'dev-view': (t) => { S.devView = t.dataset.view === 'list' ? 'list' : 'racks'; prefs.devView = S.devView; savePrefs(); renderTab(); },
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),
     'amp-new': (t) => {
       if (t.dataset.rack) return openAmpEditor({ rack: t.dataset.rack, slot: +t.dataset.slot });
-      if (t.dataset.loose) return openAmpEditor({ rack: '', slot: -1, side: t.dataset.side || '' });
+      if (t.dataset.loose) return openAmpEditor({ rack: '', slot: -1, side: t.dataset.side || '', host: t.dataset.host ? +t.dataset.host : 0 });
       if (t.dataset.nozone) return openAmpEditor({ rack: '', slot: -1, noZone: true });
       const v = cur();
       if (!v) return;
