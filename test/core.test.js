@@ -429,4 +429,19 @@ t('L2 hang ends with one L2D', () => {
   assert.strictEqual(C.arrayText({ model: 'K2', qty: 12, custom: '' }), '12 × K2');
 });
 
+t('move racks in the plan', () => {
+  const v = C.makeExample();
+  const names = () => v.racks.map((r) => r.name + r.side).join(' ');
+  const [r1, r2, r3] = v.racks;
+  assert.ok(C.moveRack(v, r1.id, 'L', r2.id, true));
+  assert.ok(names().startsWith('RAK 2L RAK 1L'));
+  assert.ok(C.moveRack(v, r1.id, 'R', r3.id, false));
+  assert.strictEqual(r1.side, 'R');
+  assert.ok(v.racks.indexOf(r1) < v.racks.indexOf(r3));
+  assert.ok(C.moveRack(v, r1.id, 'L', '', false));
+  const lefts = v.racks.filter((r) => r.side === 'L');
+  assert.strictEqual(lefts[lefts.length - 1], r1);
+  assert.strictEqual(C.moveRack(v, r1.id, 'C', '', false), false);
+});
+
 console.log('\nall', n, 'tests passed');

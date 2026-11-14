@@ -426,6 +426,25 @@
     d.slot = slot;
     return true;
   }
+  // Move a rack in the plan: before or after another rack, or to the end of a side. The order of
+  // v.racks is the order racks are drawn in, so the grid stays tidy wherever a rack is dropped.
+  function moveRack(v, rackId, side, targetId, after) {
+    const list = v.racks || [];
+    const r = list.find((x) => x.id === rackId);
+    if (!r || SIDES.indexOf(side) < 0 || targetId === rackId) return false;
+    const before = list.map((x) => x.id + x.side).join();
+    list.splice(list.indexOf(r), 1);
+    r.side = side;
+    const t = list.find((x) => x.id === targetId);
+    if (t) list.splice(list.indexOf(t) + (after ? 1 : 0), 0, r);
+    else {
+      // end of that side: after its last rack, or at the very end
+      let at = -1;
+      list.forEach((x, k) => { if (x.side === side) at = k; });
+      list.splice(at < 0 ? list.length : at + 1, 0, r);
+    }
+    return list.map((x) => x.id + x.side).join() !== before;
+  }
   function removeRack(v, rackId) {
     const out = [];
     for (const d of v.devices) if (d.rack === rackId) { d.rack = ''; d.slot = -1; if (isAmpModel(d.model)) out.push(d); }
@@ -1327,7 +1346,7 @@
     DEFAULT_RACK_SIZE, RACK_FOR, rackSizeOf, rackEquivalent, rackText, countPlan, rackSummary, equipmentLine,
     SPEAKERS, SPEAKER_MAP, SPEAKER_SERIES, DRIVE_AMPS, AMP_IDS, driveOptions, driveMax, drivePerOutput, speakerLabel, perAmp, ampsNeeded,
     nextIndex, syncGroup, removeGroup, speakerPlan,
-    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
+    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;

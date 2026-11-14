@@ -1033,3 +1033,13 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .pstage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .plan[data-layout="stage"] .pstage { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "L deck R" "foh foh foh"; }
 @media (max-width: 900px) { .pstage { grid-template-columns: 1fr; } .plan[data-layout="stage"] .pstage { grid-template-columns: 1fr; grid-template-areas: "deck" "L" "R" "foh"; } }
+
+/* moving racks: grab a rack (not an amp) and drop it before/after another rack or on a side */
+.prack[data-rid][draggable="true"] { cursor: grab; }
+.prack[data-rid][draggable="true"] .pslot { cursor: pointer; }
+.prack.rk-dragging { opacity: .35; }
+.prack.rk-before { box-shadow: -6px 0 0 -2px #e8613a; }
+.prack.rk-after { box-shadow: 6px 0 0 -2px #e8613a; }
+.prack.plane.rk-before { box-shadow: 0 -5px 0 -2px #e8613a; }
+.prack.plane.rk-after { box-shadow: 0 5px 0 -2px #e8613a; }
+.pside.rk-end { outline: 2px dashed #e8613a; outline-offset: 6px; border-radius: 4px; }

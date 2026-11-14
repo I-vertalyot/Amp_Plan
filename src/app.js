@@ -917,6 +917,7 @@
     return '<div class="pslot' + (sev === 'error' ? ' p-err' : sev === 'warn' ? ' p-warn' : '') + '" role="button" tabindex="0"' + (S.readOnly ? '' : ' draggable="true"') +
       ' data-act="amp-edit" data-dev="' + esc(d.id) + '"' + (extra || '') + ' style="' + paint + '" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + slotInner(v, a, d, L) + '</div>';
   }
+  const rackAttrs = (r) => ' data-rid="' + esc(r.id) + '"' + (S.readOnly ? '' : ' draggable="true" title="Drag to move ' + esc(r.name) + '"');
   function rackBoxHtml(v, a, r) {
     const ro = S.readOnly;
     const inner = C.rackSlots(v, r).map((d, k) => (d
@@ -929,11 +930,11 @@
     const L = layoutOf();
     if (L === 'fronts') {
       const ls = sw.map((d) => '<div class="pfr-ls"><span>' + esc(d.model) + '</span><span>' + (hostOf(d) != null ? '.' + hostOf(d) : '') + '</span></div>').join('');
-      return '<div class="prack pfr">' + del + name + '<div class="pfr-body"><i class="pfr-ear" aria-hidden="true"></i><div class="pfr-slots">' + inner + ls + '</div><i class="pfr-ear" aria-hidden="true"></i></div></div>';
+      return '<div class="prack pfr""' + rackAttrs(r) + '>' + del + name + '<div class="pfr-body"><i class="pfr-ear" aria-hidden="true"></i><div class="pfr-slots">' + inner + ls + '</div><i class="pfr-ear" aria-hidden="true"></i></div></div>';
     }
-    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack plane">' + del + name + '<div class="plane-slots">' + inner + '</div>' + (sw.length ? '<span class="plane-foot">' + esc(sw.map((d) => d.model).join(' · ')) + '</span>' : '') + '</div>';
-    if (L === 'night') return '<div class="prack pnr">' + del + name + '<div class="pnr-grid">' + inner + '</div></div>';
-    return '<div class="prack">' + del + '<div class="prack-box" style="--n:' + r.size + '">' + name + inner + foot + '</div></div>';
+    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack plane""' + rackAttrs(r) + '>' + del + name + '<div class="plane-slots">' + inner + '</div>' + (sw.length ? '<span class="plane-foot">' + esc(sw.map((d) => d.model).join(' · ')) + '</span>' : '') + '</div>';
+    if (L === 'night') return '<div class="prack pnr""' + rackAttrs(r) + '>' + del + name + '<div class="pnr-grid">' + inner + '</div></div>';
+    return '<div class="prack""' + rackAttrs(r) + '>' + del + '<div class="prack-box" style="--n:' + r.size + '">' + name + inner + foot + '</div></div>';
   }
   // an amp outside the racks, drawn as its own one-amp case
   function singleHtml(v, a, d) {
@@ -1276,8 +1277,27 @@
     if (!el || !el.closest) return null;
     return el.closest('.prack:not(.psingle) .pslot') || el.closest('.pside');
   }
+  function rackDropTarget(el) {
+    if (!el || !el.closest) return null;
+    return el.closest('.prack[data-rid]') || el.closest('.pside');
+  }
+  function clearRackMarks() { $$('.rk-before, .rk-after, .rk-end, .rk-dragging').forEach((x) => x.classList.remove('rk-before', 'rk-after', 'rk-end', 'rk-dragging')); }
+  // before or after the rack under the pointer: by the horizontal half in a row of racks, vertical half in a column (lanes)
+  function rackSide(t, e) {
+    const b = t.getBoundingClientRect();
+    const lanes = t.classList.contains('plane');
+    return lanes ? e.clientY > b.top + b.height / 2 : e.clientX > b.left + b.width / 2;
+  }
   function onDragStart(e) {
     const sl = e.target.closest && e.target.closest('.pslot[data-dev]');
+    const rk = !sl && e.target.closest && e.target.closest('.prack[data-rid]');
+    if (rk && !S.readOnly) {
+      S.dragRack = rk.dataset.rid;
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
+      rk.classList.add('rk-dragging');
+      $('#tip').hidden = true;
+      return;
+    }
     if (!sl || S.readOnly) return;
     S.drag = sl.dataset.dev;
     try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', sl.dataset.dev); } catch (x) { /* older browsers */ }
@@ -1285,6 +1305,16 @@
     $('#tip').hidden = true;
   }
   function onDragOver(e) {
+    if (S.dragRack) {
+      const t = rackDropTarget(e.target);
+      if (!t) return;
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch (x) { /* ignore */ }
+      $$('.rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('rk-before', 'rk-after', 'rk-end'));
+      if (t.classList.contains('pside')) t.classList.add('rk-end');
+      else if (t.dataset.rid !== S.dragRack) t.classList.add(rackSide(t, e) ? 'rk-after' : 'rk-before');
+      return;
+    }
     if (!S.drag) return;
     const t = dropTarget(e.target);
     if (!t) return;
@@ -1298,9 +1328,30 @@
   }
   function onDragEnd() {
     S.drag = null;
+    S.dragRack = null;
+    clearRackMarks();
     $$('.dragging, .drop-hover').forEach((x) => x.classList.remove('dragging', 'drop-hover'));
   }
   function onDrop(e) {
+    if (S.dragRack) {
+      const t = rackDropTarget(e.target);
+      const id = S.dragRack;
+      const after = t && !t.classList.contains('pside') ? rackSide(t, e) : false;
+      onDragEnd();
+      if (!t) return;
+      e.preventDefault();
+      const v = cur();
+      if (!v || S.readOnly) return;
+      const sideEl = t.closest('.pside');
+      const side = sideEl ? sideEl.dataset.side : '';
+      const tgt = t.classList.contains('pside') ? '' : t.dataset.rid;
+      const snap = JSON.stringify(v.racks);
+      pushUndo(v, 'rack-move');
+      if (!C.moveRack(v, id, side, tgt, after)) { v.racks = JSON.parse(snap); S.undo.pop(); return; }
+      touch(v);
+      render();
+      return;
+    }
     if (!S.drag) return;
     const t = dropTarget(e.target);
     if (!t) return;
