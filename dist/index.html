@@ -1103,6 +1103,29 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
 .plan[data-layout="stage"] .pdeck.pdeck-foh { top: auto; bottom: 22px; }
 @media (max-width: 900px) { .plan[data-layout="stage"] .pstage { grid-template-areas: "L" "R"; padding-bottom: 80px; } .plan[data-layout="stage"] .pdeck.pdeck-foh { bottom: 18px; } }
 
+/* ================================================================ free grid: one cell = one amp */
+.pgridwrap { overflow-x: auto; padding-bottom: 4px; }
+.pgrid-in { margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.pgrid-head, .pgrid-foot { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.pgrid-head .pside-tag { width: 120px; }
+.pside-tag-L { background: var(--side-l); color: #fff; }
+.pside-tag-R { background: var(--side-r); color: #fff; }
+.pcanvas { position: relative; border-radius: 3px;
+  background-image:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(29, 31, 28, .18) calc(50% - 1px), rgba(29, 31, 28, .18) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(90deg, rgba(29, 31, 28, .07) 0 1px, transparent 1px var(--cw)),
+    repeating-linear-gradient(0deg, rgba(29, 31, 28, .05) 0 1px, transparent 1px var(--ch));
+  background-position: 0 0, -7px 0, 0 -4px; }
+.pcell { position: absolute; width: 128px; z-index: 1; }
+.pcell > .prack { width: 128px; height: 100%; }
+.pcell > .prack > .prack-box { height: 100%; box-sizing: border-box; }
+.pcell > .prack-del, .pcell .prack-del { z-index: 3; }
+.pghost { position: absolute; width: 128px; border: 2px dashed #e8613a; border-radius: 8px; background: rgba(232, 97, 58, .08); pointer-events: none; z-index: 2; }
+body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1); }
+.plan[data-layout="stage"] .pcanvas .pdeck { top: 60px; }
+.plan[data-layout="stage"] .pcanvas .pdeck.pdeck-foh { top: auto; bottom: 20px; }
+.plan[data-layout="stage"] .pgridwrap { border: 2px solid var(--putty-lo); border-radius: 4px; padding: 14px; }
+
 </style>
 </head>
 <body>
@@ -1317,6 +1340,7 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
       rack: str(o.rack, 40), slot: clampInt(o.slot, -1, 15, -1), preset: str(o.preset, 40), drives: str(o.drives, 40),
       // side of the plan for an amp outside the racks; '' = its zone's side
       side: SIDES.indexOf(o.side) >= 0 ? o.side : '',
+      pos: cleanPos(o.pos),
     };
   }
 
@@ -1344,7 +1368,7 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
       let rid = str(r.id, 40);
       if (!SAFE_ID.test(rid) || rids.has(rid)) rid = uid('r');
       rids.add(rid);
-      racks.push({ id: rid, name: str(r.name, 40) || 'Rack', side: SIDES.indexOf(r.side) >= 0 ? r.side : '',  size: clampInt(r.size, 1, 8, 3), type: RACK_MAP[r.type] ? r.type : '' });
+      racks.push({ id: rid, name: str(r.name, 40) || 'Rack', side: SIDES.indexOf(r.side) >= 0 ? r.side : '',  size: clampInt(r.size, 1, 8, 3), type: RACK_MAP[r.type] ? r.type : '', pos: cleanPos(r.pos) });
     }
     const legacy = new Map();
     const speakers = sanitizeSpeakers(raw.speakers, zids, zones[0].id);
@@ -1467,12 +1491,12 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
         assign: { scheme: v.net.assign.scheme, start: v.net.assign.start, size: v.net.assign.size, avoidDefaults: !!v.net.assign.avoidDefaults },
       },
       zones: v.zones.map((z) => ({ id: z.id, name: z.name, color: z.color, side: z.side || 'L' })),
-      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '' })),
+      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '', pos: r.pos ? { c: r.pos.c, r: r.pos.r } : null })),
       planOrder: (v.planOrder || []).slice(),
       speakers: (v.speakers || []).map((g) => ({ id: g.id, model: g.model, custom: g.custom || '', qty: g.qty, zone: g.zone, amp: g.amp, per: g.per || 0 })),
       devices: v.devices.map((d) => ({
         id: d.id, name: d.name, model: d.model, zone: d.zone, ip: d.ip, net: d.net, location: d.location,
-        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '',
+        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '', pos: d.pos ? { c: d.pos.c, r: d.pos.r } : null,
       })),
       rackSize: Object.assign({}, v.rackSize || {}),
       createdAt: v.createdAt || 0, updatedAt: v.updatedAt || 0,
@@ -1564,6 +1588,66 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
     d.slot = slot;
     return true;
   }
+  // ---- the plan grid: one cell = one amp (a rack's width, one slot's height). Columns 0–3 are the
+  // left of the stage, 4–7 the right. A rack is size + 2 cells tall (its name on top), a single amp 3.
+  const GRID_COLS = 8;
+  function cleanPos(p) {
+    if (!p || typeof p !== 'object') return null;
+    const c = Number(p.c);
+    const r = Number(p.r);
+    if (!Number.isFinite(c) || !Number.isFinite(r)) return null;
+    return { c: Math.max(0, Math.min(GRID_COLS - 1, Math.round(c))), r: Math.max(0, Math.min(400, Math.round(r))) };
+  }
+  const itemRows = (it) => (it.rack ? it.rack.size + 2 : 3);
+  const sideOfCol = (c) => (c < GRID_COLS / 2 ? 'L' : 'R');
+  // where everything sits: stored positions first, the rest stacked in their side's columns
+  function gridLayout(v) {
+    const all = [].concat(...SIDES.map((sd) => planItems(v, sd).map((it) => Object.assign(it, { side: sd }))));
+    const placed = [];
+    const bottom = new Array(GRID_COLS).fill(0);
+    const free = (c, r, h, skip) => !placed.some((p) => p !== skip && p.c === c && r < p.r + p.h && p.r < r + h);
+    for (const it of all) {
+      const pos = (it.rack || it.dev).pos;
+      if (!pos) continue;
+      const h = itemRows(it);
+      let r = pos.r;
+      while (!free(pos.c, r, h)) r++;
+      placed.push(Object.assign(it, { c: pos.c, r, h }));
+      bottom[pos.c] = Math.max(bottom[pos.c], r + h + 1);
+    }
+    for (const it of all) {
+      if (it.c != null) continue;
+      const h = itemRows(it);
+      // left fills columns 0,1 then 2,3; right fills 7,6 then 5,4: always the column that ends highest
+      const cols = it.side === 'L' ? [0, 1, 2, 3] : [7, 6, 5, 4];
+      const near = cols.slice(0, 2);
+      let pick = near.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
+      if (bottom[pick] > 20) pick = cols.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
+      let r = bottom[pick];
+      while (!free(pick, r, h)) r++;
+      placed.push(Object.assign(it, { c: pick, r, h }));
+      bottom[pick] = r + h + 1;
+    }
+    return placed;
+  }
+  // Put a rack ("r:id") or single amp ("d:id") at a cell. Everything else keeps the place it has now;
+  // if the cell is taken, the item slides down its column to the first gap that fits.
+  function placeOnGrid(v, key, c, r) {
+    const lay = gridLayout(v);
+    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r };
+    const me = lay.find((it) => it.key === key);
+    const obj = me ? me.rack || me.dev : key[0] === 'r' ? rackById(v, key.slice(2)) : v.devices.find((d) => d.id === key.slice(2));
+    if (!obj) return false;
+    const h = me ? me.h : key[0] === 'r' ? obj.size + 2 : 3;
+    c = Math.max(0, Math.min(GRID_COLS - 1, Math.round(c)));
+    r = Math.max(0, Math.round(r));
+    const others = lay.filter((it) => it.key !== key);
+    while (others.some((p) => p.c === c && r < p.r + p.h && p.r < r + h)) r++;
+    obj.pos = { c, r };
+    obj.side = sideOfCol(c);
+    return true;
+  }
+
   // ---- the plan's drawing order: racks and single amps (amps outside racks) share one order per side
   function singleSide(v, d) {
     if (SIDES.indexOf(d.side) >= 0) return d.side;
@@ -2506,7 +2590,7 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
     DEFAULT_RACK_SIZE, RACK_FOR, rackSizeOf, rackEquivalent, rackText, countPlan, rackSummary, equipmentLine,
     SPEAKERS, SPEAKER_MAP, SPEAKER_SERIES, DRIVE_AMPS, AMP_IDS, driveOptions, driveMax, drivePerOutput, speakerLabel, perAmp, ampsNeeded,
     nextIndex, syncGroup, removeGroup, speakerPlan,
-    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
+    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, gridLayout, placeOnGrid, sideOfCol, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -3491,7 +3575,7 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
         (n ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(n / 3)) + '">' + items.map((it) => (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev))).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
         (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>') + '</section>';
     }).join('');
-    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them, or onto an empty spot to take one out of its rack. Hold Ctrl while dropping to copy an amp, a rack, or a preset onto another amp.</p>';
+    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag racks and amps anywhere: they snap to a grid one amp in size. Drop an amp on a free slot to put it in a rack. Hold Ctrl while dropping to copy.</p>';
     const callout = !ro && !racks.length && loose.length
       ? '<div class="plan-callout"><div><b>' + esc(C.plural(loose.length, 'amp')) + ' not in racks yet</b><span>Pack into racks puts each zone’s amps on its side of the stage, filling L-Acoustics racks of 3. You can move them afterwards.</span></div><button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button></div>'
       : '';
@@ -3501,7 +3585,25 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
       ? '<div class="pdeck" aria-hidden="true">STAGE</div><div class="pdeck pdeck-foh" aria-hidden="true">FOH</div>'
       : '';
     const top = L === 'ipgrid' ? ipGridHtml(v, a) : '';
-    return '<div class="card plan" data-layout="' + L + '">' + pick + head + hint + callout + top + '<div class="pstage">' + deck + sides + '</div>' + legend.replace('class="plan-legend"', 'class="plan-legend at-bottom"') + '</div>';
+    const body = GRID_LAYOUTS[L] ? gridHtml(v, a, L, deck) : '<div class="pstage">' + deck + sides + '</div>';
+    return '<div class="card plan" data-layout="' + L + '">' + pick + head + hint + callout + top + body + legend.replace('class="plan-legend"', 'class="plan-legend at-bottom"') + '</div>';
+  }
+  // ---- the free grid (Monitors and Stage plot): one cell = one amp; racks and single amps snap to cells
+  const GRID_LAYOUTS = { monitors: 1, stage: 1 };
+  const CELL_W = 142;
+  const CELL_H = 30;
+  function gridHtml(v, a, L, deck) {
+    const ro = S.readOnly;
+    const lay = C.gridLayout(v);
+    const rows = Math.max(18, ...lay.map((x) => x.r + x.h)) + 4;
+    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" data-h="' + it.h + '" style="left:' + it.c * CELL_W + 'px;top:' + it.r * CELL_H + 'px;height:' + (it.h * CELL_H - 8) + 'px">' +
+      (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div>').join('');
+    const adds = (sd) => (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>');
+    const w = C.GRID_COLS * CELL_W - 14;
+    return '<div class="pgridwrap"><div class="pgrid-in" style="width:' + w + 'px">' +
+      '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
+      '<div class="pcanvas" style="height:' + rows * CELL_H + 'px;--cw:' + CELL_W + 'px;--ch:' + CELL_H + 'px">' + deck + items + '<div class="pghost" hidden></div></div>' +
+      '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div></div>';
   }
   // every address of the network block in rows of ten; used numbers coloured by zone, free ones add an amp there
   function ipGridHtml(v, a) {
@@ -3854,6 +3956,10 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
     const one = e.target.closest && !e.target.closest('.pslot') && e.target.closest('.psingle[data-did]');
     const sl = one ? one.querySelector('.pslot[data-dev]') : e.target.closest && e.target.closest('.pslot[data-dev]');
     const rk = !sl && e.target.closest && e.target.closest('.prack[data-rid]');
+    S.grab = null;
+    const holder = (rk || one || (sl && sl.closest('.psingle'))) ;
+    if (holder) { const b = holder.getBoundingClientRect(); S.grab = { dx: e.clientX - b.left, dy: e.clientY - b.top }; }
+    else if (sl) { const b = sl.getBoundingClientRect(); S.grab = { dx: Math.min(60, e.clientX - b.left), dy: e.clientY - b.top + 2 * CELL_H }; }
     if (rk && !S.readOnly) {
       S.dragRack = rk.dataset.rid;
       try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
@@ -3868,7 +3974,68 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
     $('#tip').hidden = true;
   }
   const wantsCopy = (e) => !!(e.ctrlKey || e.metaKey || e.altKey);
+  // a drop on the free grid (not on a rack slot, and not Ctrl onto another amp to copy its preset)
+  function gridTarget(e) {
+    const canvas = e.target.closest && e.target.closest('.pcanvas');
+    if (!canvas || !(S.dragRack || S.drag)) return null;
+    if (S.drag && e.target.closest('.prack:not(.psingle) .pslot')) return null;
+    if (S.drag && wantsCopy(e) && e.target.closest('.pslot[data-dev]')) return null;
+    return canvas;
+  }
+  function gridCell(e, canvas) {
+    const b = canvas.getBoundingClientRect();
+    const g = S.grab || { dx: 20, dy: 20 };
+    return { c: Math.max(0, Math.min(C.GRID_COLS - 1, Math.round((e.clientX - b.left - g.dx) / CELL_W))), r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / CELL_H)) };
+  }
+  function dragRows() {
+    const v = cur();
+    if (S.dragRack) { const r = v && C.rackById(v, S.dragRack); return r ? r.size + 2 : 5; }
+    return 3;
+  }
+  function gridDrop(e, canvas) {
+    const cell = gridCell(e, canvas);
+    const copy = !!(S.dragCopy || wantsCopy(e));
+    const rackId = S.dragRack;
+    const devId = S.drag;
+    onDragEnd();
+    const v = cur();
+    if (!v || S.readOnly) return;
+    if (rackId) {
+      const src = C.rackById(v, rackId);
+      if (!src) return;
+      pushUndo(v, copy ? 'rack-copy' : 'rack-move');
+      const key = copy ? 'r:' + copyRack(v, src).id : 'r:' + rackId;
+      C.placeOnGrid(v, key, cell.c, cell.r);
+      touch(v);
+      render();
+      if (copy) toast('Copied ' + src.name + '.', undoAction());
+      return;
+    }
+    const d = v.devices.find((x) => x.id === devId);
+    if (!d) return;
+    pushUndo(v, copy ? 'amp-copy' : 'move');
+    let id = d.id;
+    if (copy) id = copyAmp(v, d).id;
+    else if (C.rackById(v, d.rack)) C.placeDevice(v, d.id, '', -1);
+    C.placeOnGrid(v, 'd:' + id, cell.c, cell.r);
+    touch(v);
+    render();
+    if (copy) toast('Copied ' + (C.presetOf(v, d) || C.modelOf(d.model).label) + '.', undoAction());
+  }
   function onDragOver(e) {
+    const canvas = gridTarget(e);
+    if (canvas) {
+      e.preventDefault();
+      S.dragCopy = wantsCopy(e);
+      document.body.classList.toggle('drag-copy', S.dragCopy);
+      try { e.dataTransfer.dropEffect = S.dragCopy ? 'copy' : 'move'; } catch (x) { /* ignore */ }
+      $$('.drop-hover, .rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('drop-hover', 'rk-before', 'rk-after', 'rk-end'));
+      const cell = gridCell(e, canvas);
+      const gh = canvas.querySelector('.pghost');
+      if (gh) { gh.hidden = false; gh.style.left = cell.c * CELL_W + 'px'; gh.style.top = cell.r * CELL_H + 'px'; gh.style.height = dragRows() * CELL_H - 8 + 'px'; }
+      return;
+    }
+    $$('.pghost').forEach((g) => { g.hidden = true; });
     if (S.dragRack || S.drag) {
       S.dragCopy = wantsCopy(e);
       document.body.classList.toggle('drag-copy', S.dragCopy);
@@ -3902,6 +4069,7 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
     S.dragRack = null;
     S.dragCopy = false;
     document.body.classList.remove('drag-copy');
+    $$('.pghost').forEach((g) => { g.hidden = true; });
     clearRackMarks();
     $$('.dragging, .drop-hover').forEach((x) => x.classList.remove('dragging', 'drop-hover'));
   }
@@ -3924,6 +4092,8 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
     return nr;
   }
   function onDrop(e) {
+    const canvas = gridTarget(e);
+    if (canvas) { e.preventDefault(); gridDrop(e, canvas); return; }
     const copy = !!(S.dragCopy || wantsCopy(e));
     if (S.dragRack) {
       const t = rackDropTarget(e.target);

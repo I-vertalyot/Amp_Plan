@@ -1092,3 +1092,26 @@ body.in-venue .topbar [data-act="rail-open"] { display: none; }
 .plan[data-layout="stage"] .pstage { grid-template-areas: "L R"; padding-bottom: 110px; }
 .plan[data-layout="stage"] .pdeck.pdeck-foh { top: auto; bottom: 22px; }
 @media (max-width: 900px) { .plan[data-layout="stage"] .pstage { grid-template-areas: "L" "R"; padding-bottom: 80px; } .plan[data-layout="stage"] .pdeck.pdeck-foh { bottom: 18px; } }
+
+/* ================================================================ free grid: one cell = one amp */
+.pgridwrap { overflow-x: auto; padding-bottom: 4px; }
+.pgrid-in { margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.pgrid-head, .pgrid-foot { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.pgrid-head .pside-tag { width: 120px; }
+.pside-tag-L { background: var(--side-l); color: #fff; }
+.pside-tag-R { background: var(--side-r); color: #fff; }
+.pcanvas { position: relative; border-radius: 3px;
+  background-image:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(29, 31, 28, .18) calc(50% - 1px), rgba(29, 31, 28, .18) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(90deg, rgba(29, 31, 28, .07) 0 1px, transparent 1px var(--cw)),
+    repeating-linear-gradient(0deg, rgba(29, 31, 28, .05) 0 1px, transparent 1px var(--ch));
+  background-position: 0 0, -7px 0, 0 -4px; }
+.pcell { position: absolute; width: 128px; z-index: 1; }
+.pcell > .prack { width: 128px; height: 100%; }
+.pcell > .prack > .prack-box { height: 100%; box-sizing: border-box; }
+.pcell > .prack-del, .pcell .prack-del { z-index: 3; }
+.pghost { position: absolute; width: 128px; border: 2px dashed #e8613a; border-radius: 8px; background: rgba(232, 97, 58, .08); pointer-events: none; z-index: 2; }
+body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1); }
+.plan[data-layout="stage"] .pcanvas .pdeck { top: 60px; }
+.plan[data-layout="stage"] .pcanvas .pdeck.pdeck-foh { top: auto; bottom: 20px; }
+.plan[data-layout="stage"] .pgridwrap { border: 2px solid var(--putty-lo); border-radius: 4px; padding: 14px; }

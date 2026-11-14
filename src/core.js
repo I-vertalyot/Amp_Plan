@@ -184,6 +184,7 @@
       rack: str(o.rack, 40), slot: clampInt(o.slot, -1, 15, -1), preset: str(o.preset, 40), drives: str(o.drives, 40),
       // side of the plan for an amp outside the racks; '' = its zone's side
       side: SIDES.indexOf(o.side) >= 0 ? o.side : '',
+      pos: cleanPos(o.pos),
     };
   }
 
@@ -211,7 +212,7 @@
       let rid = str(r.id, 40);
       if (!SAFE_ID.test(rid) || rids.has(rid)) rid = uid('r');
       rids.add(rid);
-      racks.push({ id: rid, name: str(r.name, 40) || 'Rack', side: SIDES.indexOf(r.side) >= 0 ? r.side : '',  size: clampInt(r.size, 1, 8, 3), type: RACK_MAP[r.type] ? r.type : '' });
+      racks.push({ id: rid, name: str(r.name, 40) || 'Rack', side: SIDES.indexOf(r.side) >= 0 ? r.side : '',  size: clampInt(r.size, 1, 8, 3), type: RACK_MAP[r.type] ? r.type : '', pos: cleanPos(r.pos) });
     }
     const legacy = new Map();
     const speakers = sanitizeSpeakers(raw.speakers, zids, zones[0].id);
@@ -334,12 +335,12 @@
         assign: { scheme: v.net.assign.scheme, start: v.net.assign.start, size: v.net.assign.size, avoidDefaults: !!v.net.assign.avoidDefaults },
       },
       zones: v.zones.map((z) => ({ id: z.id, name: z.name, color: z.color, side: z.side || 'L' })),
-      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '' })),
+      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '', pos: r.pos ? { c: r.pos.c, r: r.pos.r } : null })),
       planOrder: (v.planOrder || []).slice(),
       speakers: (v.speakers || []).map((g) => ({ id: g.id, model: g.model, custom: g.custom || '', qty: g.qty, zone: g.zone, amp: g.amp, per: g.per || 0 })),
       devices: v.devices.map((d) => ({
         id: d.id, name: d.name, model: d.model, zone: d.zone, ip: d.ip, net: d.net, location: d.location,
-        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '',
+        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '', pos: d.pos ? { c: d.pos.c, r: d.pos.r } : null,
       })),
       rackSize: Object.assign({}, v.rackSize || {}),
       createdAt: v.createdAt || 0, updatedAt: v.updatedAt || 0,
@@ -431,6 +432,66 @@
     d.slot = slot;
     return true;
   }
+  // ---- the plan grid: one cell = one amp (a rack's width, one slot's height). Columns 0–3 are the
+  // left of the stage, 4–7 the right. A rack is size + 2 cells tall (its name on top), a single amp 3.
+  const GRID_COLS = 8;
+  function cleanPos(p) {
+    if (!p || typeof p !== 'object') return null;
+    const c = Number(p.c);
+    const r = Number(p.r);
+    if (!Number.isFinite(c) || !Number.isFinite(r)) return null;
+    return { c: Math.max(0, Math.min(GRID_COLS - 1, Math.round(c))), r: Math.max(0, Math.min(400, Math.round(r))) };
+  }
+  const itemRows = (it) => (it.rack ? it.rack.size + 2 : 3);
+  const sideOfCol = (c) => (c < GRID_COLS / 2 ? 'L' : 'R');
+  // where everything sits: stored positions first, the rest stacked in their side's columns
+  function gridLayout(v) {
+    const all = [].concat(...SIDES.map((sd) => planItems(v, sd).map((it) => Object.assign(it, { side: sd }))));
+    const placed = [];
+    const bottom = new Array(GRID_COLS).fill(0);
+    const free = (c, r, h, skip) => !placed.some((p) => p !== skip && p.c === c && r < p.r + p.h && p.r < r + h);
+    for (const it of all) {
+      const pos = (it.rack || it.dev).pos;
+      if (!pos) continue;
+      const h = itemRows(it);
+      let r = pos.r;
+      while (!free(pos.c, r, h)) r++;
+      placed.push(Object.assign(it, { c: pos.c, r, h }));
+      bottom[pos.c] = Math.max(bottom[pos.c], r + h + 1);
+    }
+    for (const it of all) {
+      if (it.c != null) continue;
+      const h = itemRows(it);
+      // left fills columns 0,1 then 2,3; right fills 7,6 then 5,4: always the column that ends highest
+      const cols = it.side === 'L' ? [0, 1, 2, 3] : [7, 6, 5, 4];
+      const near = cols.slice(0, 2);
+      let pick = near.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
+      if (bottom[pick] > 20) pick = cols.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
+      let r = bottom[pick];
+      while (!free(pick, r, h)) r++;
+      placed.push(Object.assign(it, { c: pick, r, h }));
+      bottom[pick] = r + h + 1;
+    }
+    return placed;
+  }
+  // Put a rack ("r:id") or single amp ("d:id") at a cell. Everything else keeps the place it has now;
+  // if the cell is taken, the item slides down its column to the first gap that fits.
+  function placeOnGrid(v, key, c, r) {
+    const lay = gridLayout(v);
+    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r };
+    const me = lay.find((it) => it.key === key);
+    const obj = me ? me.rack || me.dev : key[0] === 'r' ? rackById(v, key.slice(2)) : v.devices.find((d) => d.id === key.slice(2));
+    if (!obj) return false;
+    const h = me ? me.h : key[0] === 'r' ? obj.size + 2 : 3;
+    c = Math.max(0, Math.min(GRID_COLS - 1, Math.round(c)));
+    r = Math.max(0, Math.round(r));
+    const others = lay.filter((it) => it.key !== key);
+    while (others.some((p) => p.c === c && r < p.r + p.h && p.r < r + h)) r++;
+    obj.pos = { c, r };
+    obj.side = sideOfCol(c);
+    return true;
+  }
+
   // ---- the plan's drawing order: racks and single amps (amps outside racks) share one order per side
   function singleSide(v, d) {
     if (SIDES.indexOf(d.side) >= 0) return d.side;
@@ -1373,7 +1434,7 @@
     DEFAULT_RACK_SIZE, RACK_FOR, rackSizeOf, rackEquivalent, rackText, countPlan, rackSummary, equipmentLine,
     SPEAKERS, SPEAKER_MAP, SPEAKER_SERIES, DRIVE_AMPS, AMP_IDS, driveOptions, driveMax, drivePerOutput, speakerLabel, perAmp, ampsNeeded,
     nextIndex, syncGroup, removeGroup, speakerPlan,
-    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
+    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, gridLayout, placeOnGrid, sideOfCol, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;

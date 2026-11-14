@@ -974,7 +974,7 @@
         (n ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(n / 3)) + '">' + items.map((it) => (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev))).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
         (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>') + '</section>';
     }).join('');
-    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them, or onto an empty spot to take one out of its rack. Hold Ctrl while dropping to copy an amp, a rack, or a preset onto another amp.</p>';
+    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag racks and amps anywhere: they snap to a grid one amp in size. Drop an amp on a free slot to put it in a rack. Hold Ctrl while dropping to copy.</p>';
     const callout = !ro && !racks.length && loose.length
       ? '<div class="plan-callout"><div><b>' + esc(C.plural(loose.length, 'amp')) + ' not in racks yet</b><span>Pack into racks puts each zone’s amps on its side of the stage, filling L-Acoustics racks of 3. You can move them afterwards.</span></div><button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button></div>'
       : '';
@@ -984,7 +984,25 @@
       ? '<div class="pdeck" aria-hidden="true">STAGE</div><div class="pdeck pdeck-foh" aria-hidden="true">FOH</div>'
       : '';
     const top = L === 'ipgrid' ? ipGridHtml(v, a) : '';
-    return '<div class="card plan" data-layout="' + L + '">' + pick + head + hint + callout + top + '<div class="pstage">' + deck + sides + '</div>' + legend.replace('class="plan-legend"', 'class="plan-legend at-bottom"') + '</div>';
+    const body = GRID_LAYOUTS[L] ? gridHtml(v, a, L, deck) : '<div class="pstage">' + deck + sides + '</div>';
+    return '<div class="card plan" data-layout="' + L + '">' + pick + head + hint + callout + top + body + legend.replace('class="plan-legend"', 'class="plan-legend at-bottom"') + '</div>';
+  }
+  // ---- the free grid (Monitors and Stage plot): one cell = one amp; racks and single amps snap to cells
+  const GRID_LAYOUTS = { monitors: 1, stage: 1 };
+  const CELL_W = 142;
+  const CELL_H = 30;
+  function gridHtml(v, a, L, deck) {
+    const ro = S.readOnly;
+    const lay = C.gridLayout(v);
+    const rows = Math.max(18, ...lay.map((x) => x.r + x.h)) + 4;
+    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" data-h="' + it.h + '" style="left:' + it.c * CELL_W + 'px;top:' + it.r * CELL_H + 'px;height:' + (it.h * CELL_H - 8) + 'px">' +
+      (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div>').join('');
+    const adds = (sd) => (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>');
+    const w = C.GRID_COLS * CELL_W - 14;
+    return '<div class="pgridwrap"><div class="pgrid-in" style="width:' + w + 'px">' +
+      '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
+      '<div class="pcanvas" style="height:' + rows * CELL_H + 'px;--cw:' + CELL_W + 'px;--ch:' + CELL_H + 'px">' + deck + items + '<div class="pghost" hidden></div></div>' +
+      '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div></div>';
   }
   // every address of the network block in rows of ten; used numbers coloured by zone, free ones add an amp there
   function ipGridHtml(v, a) {
@@ -1337,6 +1355,10 @@
     const one = e.target.closest && !e.target.closest('.pslot') && e.target.closest('.psingle[data-did]');
     const sl = one ? one.querySelector('.pslot[data-dev]') : e.target.closest && e.target.closest('.pslot[data-dev]');
     const rk = !sl && e.target.closest && e.target.closest('.prack[data-rid]');
+    S.grab = null;
+    const holder = (rk || one || (sl && sl.closest('.psingle'))) ;
+    if (holder) { const b = holder.getBoundingClientRect(); S.grab = { dx: e.clientX - b.left, dy: e.clientY - b.top }; }
+    else if (sl) { const b = sl.getBoundingClientRect(); S.grab = { dx: Math.min(60, e.clientX - b.left), dy: e.clientY - b.top + 2 * CELL_H }; }
     if (rk && !S.readOnly) {
       S.dragRack = rk.dataset.rid;
       try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
@@ -1351,7 +1373,68 @@
     $('#tip').hidden = true;
   }
   const wantsCopy = (e) => !!(e.ctrlKey || e.metaKey || e.altKey);
+  // a drop on the free grid (not on a rack slot, and not Ctrl onto another amp to copy its preset)
+  function gridTarget(e) {
+    const canvas = e.target.closest && e.target.closest('.pcanvas');
+    if (!canvas || !(S.dragRack || S.drag)) return null;
+    if (S.drag && e.target.closest('.prack:not(.psingle) .pslot')) return null;
+    if (S.drag && wantsCopy(e) && e.target.closest('.pslot[data-dev]')) return null;
+    return canvas;
+  }
+  function gridCell(e, canvas) {
+    const b = canvas.getBoundingClientRect();
+    const g = S.grab || { dx: 20, dy: 20 };
+    return { c: Math.max(0, Math.min(C.GRID_COLS - 1, Math.round((e.clientX - b.left - g.dx) / CELL_W))), r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / CELL_H)) };
+  }
+  function dragRows() {
+    const v = cur();
+    if (S.dragRack) { const r = v && C.rackById(v, S.dragRack); return r ? r.size + 2 : 5; }
+    return 3;
+  }
+  function gridDrop(e, canvas) {
+    const cell = gridCell(e, canvas);
+    const copy = !!(S.dragCopy || wantsCopy(e));
+    const rackId = S.dragRack;
+    const devId = S.drag;
+    onDragEnd();
+    const v = cur();
+    if (!v || S.readOnly) return;
+    if (rackId) {
+      const src = C.rackById(v, rackId);
+      if (!src) return;
+      pushUndo(v, copy ? 'rack-copy' : 'rack-move');
+      const key = copy ? 'r:' + copyRack(v, src).id : 'r:' + rackId;
+      C.placeOnGrid(v, key, cell.c, cell.r);
+      touch(v);
+      render();
+      if (copy) toast('Copied ' + src.name + '.', undoAction());
+      return;
+    }
+    const d = v.devices.find((x) => x.id === devId);
+    if (!d) return;
+    pushUndo(v, copy ? 'amp-copy' : 'move');
+    let id = d.id;
+    if (copy) id = copyAmp(v, d).id;
+    else if (C.rackById(v, d.rack)) C.placeDevice(v, d.id, '', -1);
+    C.placeOnGrid(v, 'd:' + id, cell.c, cell.r);
+    touch(v);
+    render();
+    if (copy) toast('Copied ' + (C.presetOf(v, d) || C.modelOf(d.model).label) + '.', undoAction());
+  }
   function onDragOver(e) {
+    const canvas = gridTarget(e);
+    if (canvas) {
+      e.preventDefault();
+      S.dragCopy = wantsCopy(e);
+      document.body.classList.toggle('drag-copy', S.dragCopy);
+      try { e.dataTransfer.dropEffect = S.dragCopy ? 'copy' : 'move'; } catch (x) { /* ignore */ }
+      $$('.drop-hover, .rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('drop-hover', 'rk-before', 'rk-after', 'rk-end'));
+      const cell = gridCell(e, canvas);
+      const gh = canvas.querySelector('.pghost');
+      if (gh) { gh.hidden = false; gh.style.left = cell.c * CELL_W + 'px'; gh.style.top = cell.r * CELL_H + 'px'; gh.style.height = dragRows() * CELL_H - 8 + 'px'; }
+      return;
+    }
+    $$('.pghost').forEach((g) => { g.hidden = true; });
     if (S.dragRack || S.drag) {
       S.dragCopy = wantsCopy(e);
       document.body.classList.toggle('drag-copy', S.dragCopy);
@@ -1385,6 +1468,7 @@
     S.dragRack = null;
     S.dragCopy = false;
     document.body.classList.remove('drag-copy');
+    $$('.pghost').forEach((g) => { g.hidden = true; });
     clearRackMarks();
     $$('.dragging, .drop-hover').forEach((x) => x.classList.remove('dragging', 'drop-hover'));
   }
@@ -1407,6 +1491,8 @@
     return nr;
   }
   function onDrop(e) {
+    const canvas = gridTarget(e);
+    if (canvas) { e.preventDefault(); gridDrop(e, canvas); return; }
     const copy = !!(S.dragCopy || wantsCopy(e));
     if (S.dragRack) {
       const t = rackDropTarget(e.target);

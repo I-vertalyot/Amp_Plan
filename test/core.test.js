@@ -458,4 +458,20 @@ t('single amps take a place among the racks', () => {
   assert.deepStrictEqual(C.planItems(back, 'R').map((x) => x.key), C.planItems(v, 'R').map((x) => x.key));
 });
 
+t('plan grid: one cell per amp, snapping and sides', () => {
+  const v = C.makeExample();
+  const lay = C.gridLayout(v);
+  for (const a of lay) for (const b of lay) if (a !== b && a.c === b.c) assert.ok(a.r + a.h <= b.r || b.r + b.h <= a.r, 'no overlap');
+  const r1 = v.racks[0];
+  C.placeOnGrid(v, 'r:' + r1.id, 6, 0);
+  assert.strictEqual(r1.side, 'R');
+  const taken = C.gridLayout(v).find((x) => x.key === 'r:' + r1.id);
+  assert.strictEqual(taken.c, 6);
+  const r2 = v.racks[1];
+  C.placeOnGrid(v, 'r:' + r2.id, 6, 1);
+  const p2 = C.gridLayout(v).find((x) => x.key === 'r:' + r2.id);
+  assert.ok(p2.r >= taken.r + taken.h, 'slides below the rack already there');
+  assert.strictEqual(C.placeOnGrid(v, 'r:nope', 0, 0), false);
+});
+
 console.log('\nall', n, 'tests passed');
