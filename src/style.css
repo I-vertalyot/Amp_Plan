@@ -1043,3 +1043,6 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .prack.plane.rk-before { box-shadow: 0 -5px 0 -2px #e8613a; }
 .prack.plane.rk-after { box-shadow: 0 5px 0 -2px #e8613a; }
 .pside.rk-end { outline: 2px dashed #e8613a; outline-offset: 6px; border-radius: 4px; }
+
+/* zone legend under the plan, in one row */
+.plan-legend.at-bottom { grid-column: auto; grid-row: auto; justify-self: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px 22px; padding-top: 14px; border-top: 1px dashed var(--putty-lo, #a69d86); }
