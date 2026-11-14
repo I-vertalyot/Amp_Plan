@@ -877,3 +877,12 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 :root[data-skin="retro"] .summary .pill.sev-ok, :root[data-skin="retro"] .summary .pill.sev-warn, :root[data-skin="retro"] .summary .pill.sev-error { background: transparent; color: #151714; }
 :root[data-skin="retro"] .summary .pill.sev-warn .pill-ico { background: #d39a12; color: #151714; }
 :root[data-skin="retro"] .summary .pill.sev-error .pill-ico { background: #c8372a; color: #fff; }
+
+/* delete button on a rack card */
+.prack { position: relative; }
+.prack-del { position: absolute; top: -7px; right: -7px; z-index: 2; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--putty-dk, #555); background: var(--putty, #ddd); color: #6b1d14; box-shadow: 0 1px 0 rgba(0,0,0,.25); opacity: 0; transition: opacity .12s; cursor: pointer; }
+.prack-del svg { width: 10px; height: 10px; }
+.prack:hover .prack-del, .prack-del:focus-visible { opacity: 1; }
+.prack-del:hover { background: #c8372a; color: #fff; border-color: #7a1d14; }
+@media (hover: none) { .prack-del { opacity: 1; } }

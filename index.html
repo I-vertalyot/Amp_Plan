@@ -888,6 +888,15 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 :root[data-skin="retro"] .summary .pill.sev-warn .pill-ico { background: #d39a12; color: #151714; }
 :root[data-skin="retro"] .summary .pill.sev-error .pill-ico { background: #c8372a; color: #fff; }
 
+/* delete button on a rack card */
+.prack { position: relative; }
+.prack-del { position: absolute; top: -7px; right: -7px; z-index: 2; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--putty-dk, #555); background: var(--putty, #ddd); color: #6b1d14; box-shadow: 0 1px 0 rgba(0,0,0,.25); opacity: 0; transition: opacity .12s; cursor: pointer; }
+.prack-del svg { width: 10px; height: 10px; }
+.prack:hover .prack-del, .prack-del:focus-visible { opacity: 1; }
+.prack-del:hover { background: #c8372a; color: #fff; border-color: #7a1d14; }
+@media (hover: none) { .prack-del { opacity: 1; } }
+
 </style>
 </head>
 <body>
@@ -2799,6 +2808,27 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
       v.zones.map((z) => '<option value="' + esc(z.id) + '"' + (S.zone === z.id ? ' selected' : '') + '>' + esc(z.name) + '</option>').join('') + '</select>' +
       '<label class="sr-only" for="f-q">Filter devices</label><input id="f-q" type="search" data-ui="q" placeholder="Filter by name, IP, serial…" value="' + esc(S.q) + '" autocomplete="off"></div></div>';
   }
+  const emptyRacks = (v) => (v.racks || []).filter((r) => !v.devices.some((d) => d.rack === r.id));
+  // delete a rack; with amps: true its amps (and LS10s) go too, otherwise they move to "Not in a rack"
+  function deleteRack(v, r, withAmps) {
+    if (!v || !r || S.readOnly) return;
+    pushUndo(v, 'rack');
+    const inside = v.devices.filter((d) => d.rack === r.id);
+    let msg;
+    if (withAmps) {
+      const ids = new Set(inside.map((d) => d.id));
+      C.removeRack(v, r.id);
+      v.devices = v.devices.filter((d) => !ids.has(d.id));
+      const linked = inside.some((d) => d.drives);
+      msg = 'Deleted ' + r.name + (inside.length ? ' and its ' + C.plural(inside.length, 'device') : '') + '.' + (linked ? ' Speaker groups that used them are now short; see Speakers & amps.' : '');
+    } else {
+      const out = C.removeRack(v, r.id);
+      msg = 'Deleted ' + r.name + (out.length ? '. ' + C.plural(out.length, 'amp') + ' moved to Not in a rack.' : '.');
+    }
+    touch(v);
+    render();
+    toast(msg, undoAction());
+  }
   function viewSwitch() {
     return '<div class="seg" role="group" aria-label="Show devices as"><button type="button" data-act="dev-view" data-view="racks" aria-pressed="' + (S.devView === 'racks') + '">Racks</button>' +
       '<button type="button" data-act="dev-view" data-view="list" aria-pressed="' + (S.devView === 'list') + '">List</button></div>';
@@ -2806,7 +2836,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
   function devicesHtml(v, a) {
     if (S.devView === 'racks') {
       const tools = '<div class="toolbar"><div class="tb-left">' + viewSwitch() +
-        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button><button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
+        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button>' + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
         '</div></div>';
       return tools + planHtml(v, a);
     }
@@ -3108,7 +3138,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
       : '<div class="pslot p-empty" role="button" tabindex="0" data-act="' + (ro ? '' : 'amp-new') + '" data-rack="' + esc(r.id) + '" data-slot="' + k + '" aria-label="Empty slot ' + (k + 1) + ' in ' + esc(r.name) + '">' + (ro ? '' : 'free') + '</div>')).join('');
     const sw = v.devices.filter((d) => d.rack === r.id && !C.isAmpModel(d.model));
     const foot = sw.length ? '<div class="prack-foot">' + esc(sw.map((d) => d.model + (C.parseIp(d.ip) != null ? ' .' + C.host(C.parseIp(d.ip)) : '')).join(' · ')) + '</div>' : '';
-    return '<div class="prack"><div class="prack-box" style="--n:' + r.size + '"><button type="button" class="prack-name" data-act="rack-edit" data-rack="' + esc(r.id) + '"' + (ro ? ' disabled' : '') + ' title="' + esc((r.type || 'Custom rack') + (ro ? '' : ' · click to edit')) + '"><span>' + esc(r.name) + '</span>' + (r.type ? '<small>' + esc(r.type) + '</small>' : '') + '</button>' +
+    const del = ro ? '' : '<button type="button" class="prack-del" data-act="rack-del" data-rack="' + esc(r.id) + '" title="Delete ' + esc(r.name) + '" aria-label="Delete ' + esc(r.name) + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>';
+    return '<div class="prack">' + del + '<div class="prack-box" style="--n:' + r.size + '"><button type="button" class="prack-name" data-act="rack-edit" data-rack="' + esc(r.id) + '"' + (ro ? ' disabled' : '') + ' title="' + esc((r.type || 'Custom rack') + (ro ? '' : ' · click to edit')) + '"><span>' + esc(r.name) + '</span>' + (r.type ? '<small>' + esc(r.type) + '</small>' : '') + '</button>' +
       inner + foot + '</div></div>';
   }
   function planHtml(v, a) {
@@ -3355,13 +3386,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
         '<div class="field"><label for="re-size">Amp slots</label><input id="re-size" type="number" min="1" max="8" value="' + r.size + '" inputmode="numeric"></div></div>' +
         '<p class="muted" id="re-note"></p>',
       actions: [
-        { label: 'Delete rack', kind: 'quiet danger', left: true, onClick: () => {
-          pushUndo(v, 'rack');
-          const out = C.removeRack(v, r.id);
-          touch(v);
-          render();
-          toast('Deleted ' + r.name + (out.length ? '. ' + C.plural(out.length, 'amp') + ' moved to Not in a rack' : '') + '.', undoAction());
-        } },
+        { label: 'Delete rack', kind: 'quiet danger', left: true, onClick: () => deleteRack(v, r, false) },
+        { label: 'Delete with amps', kind: 'quiet danger', onClick: () => deleteRack(v, r, true) },
         { label: 'Cancel' },
         { label: 'Save', kind: 'primary', onClick: (m) => {
           pushUndo(v, 'rack');
@@ -3672,6 +3698,29 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
       toast('Added ' + r.name + (r.side === 'C' ? ' in the center' : ' on the ' + C.SIDE_LABEL[r.side].toLowerCase()) + '. Click its name to change type or slots.', undoAction());
     },
     'rack-edit': (t) => openRackEditor(t.dataset.rack),
+    'rack-del': (t) => {
+      const v = cur();
+      const r = v && C.rackById(v, t.dataset.rack);
+      if (!r) return;
+      const n = v.devices.filter((d) => d.rack === r.id).length;
+      if (!n) return deleteRack(v, r, false);
+      openModal({
+        title: 'Delete ' + r.name + '?',
+        body: '<p>' + esc(r.name) + ' holds ' + esc(C.plural(n, 'device')) + '.</p>',
+        actions: [{ label: 'Cancel' }, { label: 'Delete rack and amps', kind: 'quiet danger', onClick: () => deleteRack(v, r, true) }, { label: 'Delete rack, keep amps', kind: 'primary', onClick: () => deleteRack(v, r, false) }],
+      });
+    },
+    'rack-del-empty': () => {
+      const v = cur();
+      if (!v || S.readOnly) return;
+      const list = emptyRacks(v);
+      if (!list.length) return;
+      pushUndo(v, 'rack');
+      list.forEach((r) => C.removeRack(v, r.id));
+      touch(v);
+      render();
+      toast('Deleted ' + C.plural(list.length, 'empty rack') + '.', undoAction());
+    },
     'rack-pack': () => {
       const v = cur();
       if (!v || S.readOnly) return;
