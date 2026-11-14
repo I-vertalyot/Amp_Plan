@@ -1048,3 +1048,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .plan-legend.at-bottom { grid-column: auto; grid-row: auto; justify-self: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px 22px; padding-top: 14px; border-top: 1px dashed var(--putty-lo, #a69d86); }
 .psingle[data-did][draggable="true"] { cursor: grab; position: relative; }
 .psingle .pslot { cursor: pointer; }
+
+/* a free slot says what clicking it does */
+.prack .pslot.p-empty[data-act="amp-new"]:hover { font-size: 0 !important; }
+.prack .pslot.p-empty[data-act="amp-new"]:hover::before { content: "+ Add amp"; font-size: 12px; }
+.plan[data-layout="night"] .prack .pslot.p-empty[data-act="amp-new"]:hover::before { font-size: 13px; }

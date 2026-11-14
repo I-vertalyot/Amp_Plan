@@ -1059,6 +1059,11 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .psingle[data-did][draggable="true"] { cursor: grab; position: relative; }
 .psingle .pslot { cursor: pointer; }
 
+/* a free slot says what clicking it does */
+.prack .pslot.p-empty[data-act="amp-new"]:hover { font-size: 0 !important; }
+.prack .pslot.p-empty[data-act="amp-new"]:hover::before { content: "+ Add amp"; font-size: 12px; }
+.plan[data-layout="night"] .prack .pslot.p-empty[data-act="amp-new"]:hover::before { font-size: 13px; }
+
 </style>
 </head>
 <body>
@@ -3080,7 +3085,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
   function devicesHtml(v, a) {
     if (S.devView === 'racks') {
       const tools = '<div class="toolbar"><div class="tb-left">' + viewSwitch() +
-        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button>' + (v.devices.some((d) => C.isAmpModel(d.model) && !C.rackById(v, d.rack)) && (v.racks || []).length ? '<button class="btn" data-act="rack-pack">Pack single amps into racks</button>' : '') + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
+        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="rack-add">Add empty rack</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button>' + (v.devices.some((d) => C.isAmpModel(d.model) && !C.rackById(v, d.rack)) && (v.racks || []).length ? '<button class="btn" data-act="rack-pack">Pack single amps into racks</button>' : '') + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
         '</div></div>';
       return tools + planHtml(v, a);
     }
@@ -3688,6 +3693,39 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     if (swapped.length) left += ' ' + swapped.map((x) => x.name).join(', ') + (swapped[0].ip ? ' moved to ' + swapped[0].ip : ' now has no IP') + '.';
     toast((isNew ? 'Added ' : 'Saved ') + C.slotLabel(v, d, C.netInfo(v)) + '.' + left, undoAction());
   }
+  // a new empty rack: name, side, type and slots; amps go in afterwards through its free slots
+  function openNewRack(side0) {
+    const v = cur();
+    if (!v || S.readOnly) return;
+    const side = C.SIDES.indexOf(side0) >= 0 ? side0 : 'L';
+    openModal({
+      title: 'Add empty rack',
+      body: '<div class="form-grid">' +
+        '<div class="field"><label for="nr-name">Name</label><input id="nr-name" maxlength="40" value="' + esc(C.nextRackName(v)) + '" autocomplete="off"></div>' +
+        '<div class="field"><label for="nr-side">Side of the stage</label><select id="nr-side">' + C.SIDES.map((sd) => '<option value="' + sd + '"' + (sd === side ? ' selected' : '') + '>' + C.SIDE_LABEL[sd] + '</option>').join('') + '</select></div>' +
+        '<div class="field"><label for="nr-type">Rack type</label><select id="nr-type"><option value="">Custom rack</option>' + C.RACKS.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === 'LA-RAK II AVB' ? ' selected' : '') + '>' + esc(x.id + ' · ' + x.info) + '</option>').join('') + '</select></div>' +
+        '<div class="field"><label for="nr-size">Amp slots</label><input id="nr-size" type="number" min="1" max="8" value="3" inputmode="numeric"></div></div>' +
+        '<p class="muted">The rack starts empty. Click a free slot afterwards to add an amp to it.</p>',
+      actions: [
+        { label: 'Cancel' },
+        { label: 'Add rack and an amp', onClick: (m) => { const r = createRack(v, m); if (r) setTimeout(() => openAmpEditor({ rack: r.id, slot: 0 }), 0); } },
+        { label: 'Add empty rack', kind: 'primary', onClick: (m) => { createRack(v, m); } },
+      ],
+      onOpen: (m) => {
+        const ty = $('#nr-type', m);
+        ty.addEventListener('change', () => { const r = C.RACK_MAP[ty.value]; if (r) $('#nr-size', m).value = r.amps.length; });
+      },
+    });
+  }
+  function createRack(v, m) {
+    pushUndo(v, 'rack');
+    const type = C.RACK_MAP[$('#nr-type', m).value] ? $('#nr-type', m).value : '';
+    const r = C.addRack(v, { name: $('#nr-name', m).value.trim() || C.nextRackName(v), side: $('#nr-side', m).value, size: C.clampInt($('#nr-size', m).value, 1, 8, 3), type });
+    touch(v);
+    render();
+    toast('Added empty ' + r.name + ' on the ' + C.SIDE_LABEL[r.side].toLowerCase() + '. Click a free slot to add an amp.', { label: 'Add amp', onClick: () => openAmpEditor({ rack: r.id, slot: 0 }) });
+    return r;
+  }
   function openRackEditor(id) {
     const v = cur();
     const r = v && C.rackById(v, id);
@@ -4071,15 +4109,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
       }
       openAmpEditor({ rack: '', slot: -1, side });
     },
-    'rack-add': (t) => {
-      const v = cur();
-      if (!v || S.readOnly) return;
-      pushUndo(v, 'rack');
-      const r = C.addRack(v, { side: t.dataset.side, size: 3 });
-      touch(v);
-      render();
-      toast('Added ' + r.name + ' on the ' + C.SIDE_LABEL[r.side].toLowerCase() + '. Click its name to change type or slots.', undoAction());
-    },
+    'rack-add': (t) => openNewRack(t.dataset.side || ''),
     'rack-edit': (t) => openRackEditor(t.dataset.rack),
     'amp-del': (t) => deleteDevices([t.dataset.dev]),
     'rack-del': (t) => {
