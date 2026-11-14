@@ -405,4 +405,16 @@ t('racks: layout, swap, pack, resize, legacy names, labels', () => {
   assert.ok(C.toDelimited(C.makeExample(), ';').includes('Main L K2 1;LA12X;K2;192.168.1.11;192.168.2.11;Primary + secondary;255.255.255.0;SL wing;RAK 1 · slot 1 (Left)'));
 });
 
+t('amps can have no zone', () => {
+  const v = C.makeExample();
+  const spare = v.devices.find((d) => d.name === 'Spare');
+  spare.zone = '';
+  const back = C.sanitizeVenue(v.id, JSON.parse(JSON.stringify(C.serialize(v))));
+  assert.strictEqual(back.devices.find((d) => d.name === 'Spare').zone, '');
+  const cp = C.countPlan(back);
+  assert.strictEqual(cp.rows[cp.rows.length - 1].zone.name, 'No zone');
+  assert.strictEqual(cp.rows[cp.rows.length - 1].amps, 1);
+  assert.ok(C.planSvg(back).indexOf('<svg') === 0);
+});
+
 console.log('\nall', n, 'tests passed');

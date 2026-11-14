@@ -522,8 +522,8 @@
   function modelOptions(sel) {
     return C.GROUPS.map((g) => '<optgroup label="' + esc(g[1]) + '">' + C.MODELS.filter((m) => m.group === g[0]).map((m) => '<option value="' + esc(m.id) + '"' + (m.id === sel ? ' selected' : '') + '>' + esc(m.label) + '</option>').join('') + '</optgroup>').join('');
   }
-  function zoneOptions(v, sel) {
-    return v.zones.map((z) => '<option value="' + esc(z.id) + '"' + (z.id === sel ? ' selected' : '') + '>' + esc(z.name) + '</option>').join('');
+  function zoneOptions(v, sel, none) {
+    return (none ? '<option value=""' + (sel === '' ? ' selected' : '') + '>No zone</option>' : '') + v.zones.map((z) => '<option value="' + esc(z.id) + '"' + (z.id === sel ? ' selected' : '') + '>' + esc(z.name) + '</option>').join('');
   }
   function chipHtml(st) {
     const u = STATUS_UI[st] || STATUS_UI.planned;
@@ -586,7 +586,7 @@
   function devicesHtml(v, a) {
     if (S.devView === 'racks') {
       const tools = '<div class="toolbar"><div class="tb-left">' + viewSwitch() +
-        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button><button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
+        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="amp-new" data-nozone="1">Add amp without zone</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button><button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
         '</div></div>';
       return tools + planHtml(v, a);
     }
@@ -594,18 +594,19 @@
   }
   function listHtml(v, a) {
     const red = !!v.net.redundancy;
-    const zones = S.zone === 'all' ? v.zones : v.zones.filter((z) => z.id === S.zone);
+    const loose = v.devices.some((d) => !v.zones.some((z) => z.id === d.zone));
+    const zones = (S.zone === 'all' ? v.zones : v.zones.filter((z) => z.id === S.zone)).concat(S.zone === 'all' && loose ? [{ id: '', name: 'No zone', color: 8, none: true }] : []);
     const blocks = C.zoneBlocks(v);
     const bmap = new Map((blocks || []).map((b) => [b.zone, b]));
     const cols = 10 + (red ? 1 : 0);
     const hide = Object.keys(prefs.cols).filter((k) => !prefs.cols[k]).map((k) => ' hide-' + k).join('');
     let rows = '';
     for (const z of zones) {
-      const list = v.devices.filter((d) => d.zone === z.id);
-      const b = bmap.get(z.id);
+      const list = z.none ? v.devices.filter((d) => !v.zones.some((x) => x.id === d.zone)) : v.devices.filter((d) => d.zone === z.id);
+      const b = z.none ? null : bmap.get(z.id);
       rows += '<tr class="zone-row" data-zone="' + esc(z.id) + '"><td colspan="' + cols + '"><div class="zone-head"><span class="sw" style="background:var(--z' + z.color + ')"></span><strong>' + esc(z.name) + '</strong><span class="muted">' + esc(C.plural(list.length, 'device')) + '</span>' +
         (b ? '<span class="blk mono" title="Auto-assign block for this zone">' + (b.full ? 'no block left' : '.' + b.lo + '–.' + b.hi) + '</span>' : '') +
-        (S.readOnly ? '' : '<button class="btn-mini" data-act="add-to-zone" data-zone="' + esc(z.id) + '">+ Add to ' + esc(z.name) + '</button>') + '</div></td></tr>';
+        (S.readOnly || z.none ? '' : '<button class="btn-mini" data-act="add-to-zone" data-zone="' + esc(z.id) + '">+ Add to ' + esc(z.name) + '</button>') + '</div></td></tr>';
       if (!list.length) rows += '<tr class="zempty"><td colspan="' + cols + '">No devices in this zone yet.</td></tr>';
       for (const d of list) rows += rowHtml(v, a, d);
     }
@@ -664,7 +665,7 @@
     if (!S.sel.size || S.readOnly) { b.hidden = true; b.innerHTML = ''; if (all) all.checked = false; return; }
     b.hidden = false;
     b.innerHTML = '<b>' + S.sel.size + ' selected</b>' +
-      '<label>Move to <select data-bulk="zone"><option value="">Zone…</option>' + zoneOptions(v, '') + '</select></label>' +
+      '<label>Move to <select data-bulk="zone"><option value="" disabled selected>Zone…</option><option value="__none">No zone</option>' + zoneOptions(v, '-') + '</select></label>' +
       '<label>Status <select data-bulk="status"><option value="">Set…</option><option value="planned">Planned</option><option value="set">Set</option><option value="ok">Online</option></select></label>' +
       '<button class="btn btn-quiet" data-act="bulk-clear">Clear IPs</button><button class="btn btn-quiet danger" data-act="bulk-del">Delete</button><button class="btn-mini" data-act="bulk-none">Done</button>';
   }
@@ -892,7 +893,9 @@
     const racks = v.racks || [];
     const amps = v.devices.filter((d) => C.isAmpModel(d.model));
     const loose = amps.filter((d) => !C.rackById(v, d.rack));
-    const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') + '</ul>';
+    const noZone = amps.some((d) => !v.zones.some((z) => z.id === d.zone));
+    const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') +
+      (noZone ? '<li><span class="sw" style="background:var(--z8)"></span>No zone</li>' : '') + '</ul>';
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
     const head = '<div class="plan-head"><div class="plan-title" aria-hidden="true"><span class="pt-amp">AMP</span><span class="pt-plan">PLAN</span></div><p class="plan-sub">' + esc(sub) + '</p>' + legend + '</div>';
     const sides = C.SIDES.map((sd) => {
@@ -949,7 +952,8 @@
     const i = a.info;
     if (!i.ok) return '';
     const dual = !!(v.net.redundancy && C.modelOf(model).red && i.secBlock != null);
-    const k = Math.max(0, v.zones.findIndex((z) => z.id === zoneId));
+    const zk = v.zones.findIndex((z) => z.id === zoneId);
+    const k = zk < 0 ? v.zones.length : zk;
     const as = v.net.assign;
     const lo = Math.min(C.MAX_HOST, as.scheme === 'zones' ? as.start + k * as.size : as.start);
     for (let pass = 0; pass < 2; pass++) {
@@ -990,7 +994,7 @@
     const slot0 = d ? d.slot : o.slot != null ? o.slot : -1;
     const rackObj = C.rackById(v, rack0);
     const side0 = rackObj ? rackObj.side : o.side || '';
-    const zone0 = d ? d.zone : (v.zones.find((z) => side0 && z.side === side0) || v.zones[0]).id;
+    const zone0 = d ? d.zone : o.noZone ? '' : (v.zones.find((z) => side0 && z.side === side0) || v.zones[0]).id;
     const model0 = d ? d.model : (rackObj && C.rackModel(v, rackObj)) || 'LA12X';
     const b0 = ampBlock(v, i, d, model0);
     const ip0 = d ? C.parseIp(d.ip) : null;
@@ -1011,7 +1015,7 @@
       body: '<div class="form-grid">' +
         '<div class="field"><label for="ae-preset">Preset (speaker)</label>' + locked + presetPick + '<small id="ae-preset-hint"></small></div>' +
         '<div class="field"><label for="ae-ip">IP address, last number</label><div class="join"><span class="prefix mono" id="ae-prefix">' + esc((b0.str || i.blockStr || '192.168.1') + '.') + '</span><select id="ae-ip" class="mono">' + hostOptions(v, a, d, host0, model0) + '</select></div>' + outside + '<small id="ae-ip-hint"></small></div>' +
-        '<div class="field"><label for="ae-zone">Zone (colour)</label><select id="ae-zone"' + (g ? ' disabled' : '') + '>' + zoneOptions(v, zone0) + '</select></div>' +
+        '<div class="field"><label for="ae-zone">Zone (colour)</label><select id="ae-zone"' + (g ? ' disabled' : '') + '>' + zoneOptions(v, zone0, true) + '</select></div>' +
         '<div class="field"><label for="ae-model">Amplifier</label><select id="ae-model"' + (g ? ' disabled' : '') + '>' + ampOpts + '</select></div>' +
         '<div class="field"><label for="ae-pos">Rack and slot</label><select id="ae-pos">' + positionOptions(v, a, d, rack0, slot0) + '</select></div>' +
         '<div class="field"><label for="ae-name">Name</label><input id="ae-name" maxlength="80" value="' + esc(d ? d.name : '') + '" placeholder="Named automatically" autocomplete="off"></div>' +
@@ -1424,6 +1428,7 @@
     'amp-new': (t) => {
       if (t.dataset.rack) return openAmpEditor({ rack: t.dataset.rack, slot: +t.dataset.slot });
       if (t.dataset.loose) return openAmpEditor({ rack: '', slot: -1 });
+      if (t.dataset.nozone) return openAmpEditor({ rack: '', slot: -1, noZone: true });
       const v = cur();
       if (!v) return;
       const side = t.dataset.side || '';
@@ -1897,7 +1902,7 @@
     pushUndo(v, 'bulk');
     for (const d of v.devices) {
       if (!S.sel.has(d.id)) continue;
-      if (el.dataset.bulk === 'zone') d.zone = el.value;
+      if (el.dataset.bulk === 'zone') d.zone = el.value === '__none' ? '' : el.value;
       if (el.dataset.bulk === 'status') d.status = el.value;
     }
     touch(v);
@@ -2257,7 +2262,7 @@
           work.forEach((z) => { z.name = String(z.name || '').trim() || 'Zone'; delete z.sideSet; if (C.SIDES.indexOf(z.side) < 0) z.side = C.inferSide(z.name); });
           const ids = new Set(work.map((z) => z.id));
           pushUndo(v, 'zones');
-          v.devices.forEach((d) => { if (!ids.has(d.zone)) d.zone = work[0].id; });
+          v.devices.forEach((d) => { if (d.zone && !ids.has(d.zone)) d.zone = work[0].id; });
           v.zones = work;
           if (S.zone !== 'all' && !ids.has(S.zone)) S.zone = 'all';
           touch(v);

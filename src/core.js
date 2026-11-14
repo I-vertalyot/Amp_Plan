@@ -219,7 +219,8 @@
       dids.add(did);
       const dev = newDevice(Object.assign({}, d, { id: did }));
       dev.ip = dev.ip.trim();
-      dev.zone = zids.has(d.zone) ? d.zone : zones[0].id;
+      // '' means "no zone" on purpose; anything else unknown falls back to the first zone
+      dev.zone = d.zone === '' ? '' : zids.has(d.zone) ? d.zone : zones[0].id;
       if (!gids.has(dev.drives)) dev.drives = '';
       if (dev.rack && !rids.has(dev.rack)) {
         // older plans stored the rack name on each device: turn it into a rack
@@ -567,6 +568,7 @@
     const amps = MODELS.filter((m) => m.group === 'amp').map((m) => m.id);
     const rows = v.zones.map((z) => ({ zone: z, counts: {}, amps: 0, channels: 0 }));
     const zi = new Map(v.zones.map((z, i) => [z.id, i]));
+    if (v.devices.some((d) => !zi.has(d.zone))) { zi.set('__none', rows.length); rows.push({ zone: { id: '', name: 'No zone', color: 8 }, counts: {}, amps: 0, channels: 0 }); }
     const totals = {};
     const inRacks = {};
     const racks = new Map((v.racks || []).map((r) => [r.id, { id: r.id, name: r.name, type: r.type, side: r.side, size: r.size, models: {}, amps: 0 }]));
@@ -574,7 +576,7 @@
     let channels = 0;
     for (const d of v.devices) {
       const m = modelOf(d.model);
-      const row = rows[zi.has(d.zone) ? zi.get(d.zone) : 0];
+      const row = rows[zi.has(d.zone) ? zi.get(d.zone) : zi.get('__none')];
       if (row) row.counts[d.model] = (row.counts[d.model] || 0) + 1;
       totals[d.model] = (totals[d.model] || 0) + 1;
       if (m.group === 'amp') {
