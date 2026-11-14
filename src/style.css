@@ -1127,3 +1127,16 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .pzoom .pzoom-val { min-width: 56px; font-variant-numeric: tabular-nums; }
 .pzoom .muted { margin-left: 8px; }
 .pgridwrap { max-height: none; }
+
+/* grid v2: the work area keeps its width; racks and squares scale with the zoom */
+.pgridwrap { overflow: visible; }
+.pgridwrap .pgrid-head, .pgridwrap .pgrid-foot { width: 100%; }
+.pcanvas { width: 100%; background-image: repeating-linear-gradient(90deg, rgba(29, 31, 28, .07) 0 1px, transparent 1px var(--cw)), repeating-linear-gradient(0deg, rgba(29, 31, 28, .05) 0 1px, transparent 1px var(--ch)); background-position: 0 0; }
+.pcanvas::before, .pcanvas::after { content: none; display: none; }
+.ptint { position: absolute; top: 0; bottom: 0; pointer-events: none; z-index: 0; }
+.ptint-L { left: 0; background: rgba(58, 128, 214, .16); border-right: 2px solid rgba(29, 31, 28, .18); }
+.ptint-R { right: 0; background: rgba(252, 163, 17, .16); border-left: 2px solid rgba(29, 31, 28, .18); }
+.pcell { width: auto; }
+.pcell-in { width: 128px; }
+.pcell-in > .prack { width: 128px; height: 100%; }
+.pcell-in > .prack > .prack-box { height: 100%; box-sizing: border-box; }

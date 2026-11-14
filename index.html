@@ -1138,6 +1138,19 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .pzoom .muted { margin-left: 8px; }
 .pgridwrap { max-height: none; }
 
+/* grid v2: the work area keeps its width; racks and squares scale with the zoom */
+.pgridwrap { overflow: visible; }
+.pgridwrap .pgrid-head, .pgridwrap .pgrid-foot { width: 100%; }
+.pcanvas { width: 100%; background-image: repeating-linear-gradient(90deg, rgba(29, 31, 28, .07) 0 1px, transparent 1px var(--cw)), repeating-linear-gradient(0deg, rgba(29, 31, 28, .05) 0 1px, transparent 1px var(--ch)); background-position: 0 0; }
+.pcanvas::before, .pcanvas::after { content: none; display: none; }
+.ptint { position: absolute; top: 0; bottom: 0; pointer-events: none; z-index: 0; }
+.ptint-L { left: 0; background: rgba(58, 128, 214, .16); border-right: 2px solid rgba(29, 31, 28, .18); }
+.ptint-R { right: 0; background: rgba(252, 163, 17, .16); border-left: 2px solid rgba(29, 31, 28, .18); }
+.pcell { width: auto; }
+.pcell-in { width: 128px; }
+.pcell-in > .prack { width: 128px; height: 100%; }
+.pcell-in > .prack > .prack-box { height: 100%; box-sizing: border-box; }
+
 </style>
 </head>
 <body>
@@ -1459,7 +1472,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       racks,
       devices,
       // drawing order of racks and single amps in the plan, as keys "r:<rack id>" / "d:<device id>"
-      planOrder: (Array.isArray(raw.planOrder) ? raw.planOrder : []).filter((k) => typeof k === 'string' && /^[rd]:/.test(k) && SAFE_ID.test(k.slice(2))).slice(0, 2000),
+      planOrder: (racks.concat(devices).forEach(migratePos), Array.isArray(raw.planOrder) ? raw.planOrder : []).filter((k) => typeof k === 'string' && /^[rd]:/.test(k) && SAFE_ID.test(k.slice(2))).slice(0, 2000),
       rackSize: sanitizeRackSize(raw.rackSize),
       createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : 0,
       updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : 0,
@@ -1503,12 +1516,12 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
         assign: { scheme: v.net.assign.scheme, start: v.net.assign.start, size: v.net.assign.size, avoidDefaults: !!v.net.assign.avoidDefaults },
       },
       zones: v.zones.map((z) => ({ id: z.id, name: z.name, color: z.color, side: z.side || 'L' })),
-      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '', pos: r.pos ? { c: r.pos.c, r: r.pos.r } : null })),
+      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '', pos: r.pos ? { c: r.pos.c, r: r.pos.r, v: 2 } : null })),
       planOrder: (v.planOrder || []).slice(),
       speakers: (v.speakers || []).map((g) => ({ id: g.id, model: g.model, custom: g.custom || '', qty: g.qty, zone: g.zone, amp: g.amp, per: g.per || 0 })),
       devices: v.devices.map((d) => ({
         id: d.id, name: d.name, model: d.model, zone: d.zone, ip: d.ip, net: d.net, location: d.location,
-        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '', pos: d.pos ? { c: d.pos.c, r: d.pos.r } : null,
+        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '', pos: d.pos ? { c: d.pos.c, r: d.pos.r, v: 2 } : null,
       })),
       rackSize: Object.assign({}, v.rackSize || {}),
       createdAt: v.createdAt || 0, updatedAt: v.updatedAt || 0,
@@ -1600,63 +1613,78 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     d.slot = slot;
     return true;
   }
-  // ---- the plan grid: one cell = one amp (a rack's width, one slot's height). Columns 0–3 are the
-  // left of the stage, 4–7 the right. A rack is size + 2 cells tall (its name on top), a single amp 3.
+  // ---- the plan grid: one cell = one amp (a rack's width, one slot's height). A position is counted
+  // from its side's outer edge: Left racks from the left edge, Right racks from the right edge, so when
+  // the plan is zoomed out the extra columns open up in the middle and nothing jumps sides.
+  // A rack is size + 2 cells tall (its name on top), a single amp 3.
   const GRID_COLS = 8;
   function cleanPos(p) {
     if (!p || typeof p !== 'object') return null;
     const c = Number(p.c);
     const r = Number(p.r);
     if (!Number.isFinite(c) || !Number.isFinite(r)) return null;
-    return { c: Math.max(0, Math.min(GRID_COLS - 1, Math.round(c))), r: Math.max(0, Math.min(400, Math.round(r))) };
+    return { c: Math.max(0, Math.min(63, Math.round(c))), r: Math.max(0, Math.min(400, Math.round(r))), v: p.v === 2 ? 2 : 1 };
+  }
+  // positions saved before they counted from the outer edge were columns 0–7 of one 8-column grid
+  function migratePos(obj) {
+    if (!obj.pos || obj.pos.v === 2) return;
+    const side = obj.pos.c < 4 ? 'L' : 'R';
+    obj.side = side;
+    obj.pos = { c: side === 'L' ? obj.pos.c : 7 - Math.min(7, obj.pos.c), r: obj.pos.r, v: 2 };
   }
   const itemRows = (it) => (it.rack ? it.rack.size + 2 : 3);
-  const sideOfCol = (c) => (c < GRID_COLS / 2 ? 'L' : 'R');
-  // where everything sits: stored positions first, the rest stacked in their side's columns
-  function gridLayout(v) {
-    const all = [].concat(...SIDES.map((sd) => planItems(v, sd).map((it) => Object.assign(it, { side: sd }))));
-    const placed = [];
-    const bottom = new Array(GRID_COLS).fill(0);
-    const free = (c, r, h, skip) => !placed.some((p) => p !== skip && p.c === c && r < p.r + p.h && p.r < r + h);
-    for (const it of all) {
-      const pos = (it.rack || it.dev).pos;
-      if (!pos) continue;
-      const h = itemRows(it);
-      let r = pos.r;
-      while (!free(pos.c, r, h)) r++;
-      placed.push(Object.assign(it, { c: pos.c, r, h }));
-      bottom[pos.c] = Math.max(bottom[pos.c], r + h + 1);
+  // where everything sits on each side, with `half` columns per side: [{ key, rack|dev, side, c, r, h }]
+  function gridLayout(v, half) {
+    half = Math.max(1, half || GRID_COLS / 2);
+    const out = [];
+    for (const side of SIDES) {
+      const all = planItems(v, side);
+      const placed = [];
+      const bottom = new Array(half).fill(0);
+      const free = (c, r, h) => !placed.some((p) => p.c === c && r < p.r + p.h && p.r < r + h);
+      for (const it of all) {
+        const pos = (it.rack || it.dev).pos;
+        if (!pos) continue;
+        const h = itemRows(it);
+        const c = Math.min(half - 1, pos.c);
+        let r = pos.r;
+        while (!free(c, r, h)) r++;
+        placed.push(Object.assign(it, { side, c, r, h }));
+        bottom[c] = Math.max(bottom[c], r + h + 1);
+      }
+      for (const it of all) {
+        if (it.c != null) continue;
+        const h = itemRows(it);
+        // the two outer columns first, the column that ends highest; further in once they are long
+        const near = [0, Math.min(1, half - 1)];
+        let pick = near.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
+        if (bottom[pick] > 20) pick = bottom.indexOf(Math.min(...bottom));
+        let r = bottom[pick];
+        while (!free(pick, r, h)) r++;
+        placed.push(Object.assign(it, { side, c: pick, r, h }));
+        bottom[pick] = r + h + 1;
+      }
+      out.push(...placed);
     }
-    for (const it of all) {
-      if (it.c != null) continue;
-      const h = itemRows(it);
-      // left fills columns 0,1 then 2,3; right fills 7,6 then 5,4: always the column that ends highest
-      const cols = it.side === 'L' ? [0, 1, 2, 3] : [7, 6, 5, 4];
-      const near = cols.slice(0, 2);
-      let pick = near.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
-      if (bottom[pick] > 20) pick = cols.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
-      let r = bottom[pick];
-      while (!free(pick, r, h)) r++;
-      placed.push(Object.assign(it, { c: pick, r, h }));
-      bottom[pick] = r + h + 1;
-    }
-    return placed;
+    return out;
   }
-  // Put a rack ("r:id") or single amp ("d:id") at a cell. Everything else keeps the place it has now;
-  // if the cell is taken, the item slides down its column to the first gap that fits.
-  function placeOnGrid(v, key, c, r) {
-    const lay = gridLayout(v);
-    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r };
+  // Put a rack ("r:id") or single amp ("d:id") on a side at a cell (c counted from that side's edge).
+  // Everything else keeps the place it has now; a taken cell slides the item down to the first gap.
+  function placeOnGrid(v, key, side, c, r, half) {
+    if (SIDES.indexOf(side) < 0) return false;
+    half = Math.max(1, half || GRID_COLS / 2);
+    const lay = gridLayout(v, half);
+    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r, v: 2 };
     const me = lay.find((it) => it.key === key);
     const obj = me ? me.rack || me.dev : key[0] === 'r' ? rackById(v, key.slice(2)) : v.devices.find((d) => d.id === key.slice(2));
     if (!obj) return false;
     const h = me ? me.h : key[0] === 'r' ? obj.size + 2 : 3;
-    c = Math.max(0, Math.min(GRID_COLS - 1, Math.round(c)));
+    c = Math.max(0, Math.min(half - 1, Math.round(c)));
     r = Math.max(0, Math.round(r));
-    const others = lay.filter((it) => it.key !== key);
+    const others = lay.filter((it) => it.key !== key && it.side === side);
     while (others.some((p) => p.c === c && r < p.r + p.h && p.r < r + h)) r++;
-    obj.pos = { c, r };
-    obj.side = sideOfCol(c);
+    obj.pos = { c, r, v: 2 };
+    obj.side = side;
     return true;
   }
 
@@ -2602,7 +2630,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     DEFAULT_RACK_SIZE, RACK_FOR, rackSizeOf, rackEquivalent, rackText, countPlan, rackSummary, equipmentLine,
     SPEAKERS, SPEAKER_MAP, SPEAKER_SERIES, DRIVE_AMPS, AMP_IDS, driveOptions, driveMax, drivePerOutput, speakerLabel, perAmp, ampsNeeded,
     nextIndex, syncGroup, removeGroup, speakerPlan,
-    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, gridLayout, placeOnGrid, sideOfCol, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
+    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, gridLayout, placeOnGrid, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -3005,6 +3033,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     return devicesHtml(v, a);
   }
   function afterTab() {
+    if (S.tab === 'devices' && S.devView === 'racks') setTimeout(syncGridWidth, 0);
     if (S.tab === 'devices' && S.devView === 'list') { applyFilter(); updateBulk(); }
   }
   // Re-validate after a field edit without rebuilding inputs (keeps focus and caret).
@@ -3608,44 +3637,66 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   const zoomOf = () => { const z = Number(prefs.planZoom); return Number.isFinite(z) && z >= ZOOM_MIN && z <= ZOOM_MAX ? z : 1; };
   function setZoom(z) {
     z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
+    if (z === zoomOf()) return;
     prefs.planZoom = z;
     savePrefs();
-    const inner = $('.pgrid-in');
-    if (inner) inner.style.zoom = z;
-    const val = $('.pzoom-val');
-    if (val) val.textContent = Math.round(z * 100) + '%';
+    renderTab();
   }
+  // the zoom at which every rack fits: across (both sides' used columns) and down (into the window)
   function fitZoom() {
+    const v = cur();
+    if (!v) return;
+    const lay = C.gridLayout(v, 64);
+    const used = { L: 0, R: 0 };
+    let rows = 6;
+    for (const it of lay) { used[it.side] = Math.max(used[it.side], it.c + 1); rows = Math.max(rows, it.r + it.h); }
+    const colsNeeded = Math.max(2, used.L + used.R + 1);
+    const W = gridWidth();
+    const availH = Math.max(240, window.innerHeight - 170);
+    setZoom(Math.min(ZOOM_MAX, (W + 14) / (colsNeeded * CELL_W), availH / ((rows + 1) * CELL_H)));
     const wrap = $('.pgridwrap');
-    const inner = $('.pgrid-in');
-    if (!wrap || !inner) return;
-    const z = zoomOf();
-    const natW = inner.offsetWidth;
-    const natH = inner.offsetHeight;
-    // the whole grid in the window: as wide as the card allows, as tall as the window minus the zoom bar
-    const availH = Math.max(240, window.innerHeight - 110);
-    setZoom(Math.min(ZOOM_MAX, (wrap.clientWidth - 8) / natW, availH / natH) || z);
-    try { wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { /* ignore */ }
+    try { if (wrap) wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { /* ignore */ }
   }
+
   const CELL_W = 142;
   const CELL_H = 30;
+  // width the grid can use: the plan card's inner width (measured after each draw)
+  const gridWidth = () => S.gridW || Math.max(320, Math.min(window.innerWidth - 120, 1600));
+  function gridGeom() {
+    const z = zoomOf();
+    const cw = CELL_W * z;
+    const ch = CELL_H * z;
+    const W = gridWidth();
+    const cols = Math.max(2, Math.floor((W + 14 * z) / cw));
+    return { z, cw, ch, W, cols, half: Math.floor(cols / 2) };
+  }
   function gridHtml(v, a, L, deck) {
     const ro = S.readOnly;
-    const lay = C.gridLayout(v);
+    const g = gridGeom();
+    const lay = C.gridLayout(v, g.half);
     const rows = Math.max(18, ...lay.map((x) => x.r + x.h)) + 4;
-    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" data-h="' + it.h + '" style="left:' + it.c * CELL_W + 'px;top:' + it.r * CELL_H + 'px;height:' + (it.h * CELL_H - 8) + 'px">' +
-      (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div>').join('');
+    const abs = (it) => (it.side === 'L' ? it.c : g.cols - 1 - it.c);
+    // only racks and the squares scale; the work area keeps its width, so zooming out opens up columns
+    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" style="left:' + abs(it) * g.cw + 'px;top:' + it.r * g.ch + 'px;width:' + 128 * g.z + 'px;height:' + (it.h * CELL_H - 8) * g.z + 'px">' +
+      '<div class="pcell-in" style="zoom:' + g.z + ';height:' + (it.h * CELL_H - 8) + 'px">' + (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div></div>').join('');
     const adds = (sd) => (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>');
-    const w = C.GRID_COLS * CELL_W - 14;
-    const z = zoomOf();
-    const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the plan"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
-      '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(z * 100) + '%</button>' +
+    const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the racks"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
+      '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(g.z * 100) + '%</button>' +
       '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="+1" aria-label="Zoom in">+</button>' +
-      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Fit the whole plan on screen">Fit</button><span class="muted">Ctrl + mouse wheel zooms too</span></div>';
-    return '<div class="pgridwrap">' + zoomBar + '<div class="pgrid-in" style="width:' + w + 'px;zoom:' + z + '">' +
+      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen">Fit</button><span class="muted">Ctrl + mouse wheel zooms the racks too</span></div>';
+    const halfW = g.half * g.cw;
+    return '<div class="pgridwrap">' + zoomBar +
       '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
-      '<div class="pcanvas" style="height:' + rows * CELL_H + 'px;--cw:' + CELL_W + 'px;--ch:' + CELL_H + 'px">' + deck + items + '<div class="pghost" hidden></div></div>' +
-      '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div></div>';
+      '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" style="height:' + rows * g.ch + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
+      '<div class="ptint ptint-L" style="width:' + halfW + 'px"></div><div class="ptint ptint-R" style="width:' + halfW + 'px"></div>' + deck + items + '<div class="pghost" hidden></div></div>' +
+      '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div>';
+  }
+  // after drawing: if the card's width changed, draw again with the right number of columns
+  function syncGridWidth() {
+    const wrap = $('.pgridwrap');
+    if (!wrap) return;
+    const w = wrap.clientWidth;
+    if (w && Math.abs(w - (S.gridW || 0)) > 2) { S.gridW = w; renderTab(); }
   }
   // every address of the network block in rows of ten; used numbers coloured by zone, free ones add an amp there
   function ipGridHtml(v, a) {
@@ -4001,7 +4052,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     S.grab = null;
     const holder = (rk || one || (sl && sl.closest('.psingle'))) ;
     if (holder) { const b = holder.getBoundingClientRect(); S.grab = { dx: e.clientX - b.left, dy: e.clientY - b.top }; }
-    else if (sl) { const b = sl.getBoundingClientRect(); S.grab = { dx: Math.min(60, e.clientX - b.left), dy: e.clientY - b.top + 2 * CELL_H }; }
+    else if (sl) { const b = sl.getBoundingClientRect(); S.grab = { dx: Math.min(60 * zoomOf(), e.clientX - b.left), dy: e.clientY - b.top + 2 * CELL_H * zoomOf() }; }
     if (rk && !S.readOnly) {
       S.dragRack = rk.dataset.rid;
       try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
@@ -4027,9 +4078,14 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   function gridCell(e, canvas) {
     const b = canvas.getBoundingClientRect();
     const g = S.grab || { dx: 20, dy: 20 };
-    // the canvas may be zoomed: its box is in screen pixels, cells are in plan pixels
-    const z = b.width / canvas.offsetWidth || 1;
-    return { c: Math.max(0, Math.min(C.GRID_COLS - 1, Math.round((e.clientX - b.left - g.dx) / (CELL_W * z)))), r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / (CELL_H * z))) };
+    const cols = +canvas.dataset.cols;
+    const half = +canvas.dataset.half;
+    const cw = +canvas.dataset.cw;
+    const ch = +canvas.dataset.ch;
+    const abs = Math.max(0, Math.min(cols - 1, Math.round((e.clientX - b.left - g.dx) / cw)));
+    const side = abs < cols / 2 ? 'L' : 'R';
+    const c = Math.min(half - 1, side === 'L' ? abs : cols - 1 - abs);
+    return { side, c, r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / ch)), abs: side === 'L' ? c : cols - 1 - c, cw, ch, half };
   }
   function dragRows() {
     const v = cur();
@@ -4049,7 +4105,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       if (!src) return;
       pushUndo(v, copy ? 'rack-copy' : 'rack-move');
       const key = copy ? 'r:' + copyRack(v, src).id : 'r:' + rackId;
-      C.placeOnGrid(v, key, cell.c, cell.r);
+      C.placeOnGrid(v, key, cell.side, cell.c, cell.r, cell.half);
       touch(v);
       render();
       if (copy) toast('Copied ' + src.name + '.', undoAction());
@@ -4061,7 +4117,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     let id = d.id;
     if (copy) id = copyAmp(v, d).id;
     else if (C.rackById(v, d.rack)) C.placeDevice(v, d.id, '', -1);
-    C.placeOnGrid(v, 'd:' + id, cell.c, cell.r);
+    C.placeOnGrid(v, 'd:' + id, cell.side, cell.c, cell.r, cell.half);
     touch(v);
     render();
     if (copy) toast('Copied ' + (C.presetOf(v, d) || C.modelOf(d.model).label) + '.', undoAction());
@@ -4076,7 +4132,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       $$('.drop-hover, .rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('drop-hover', 'rk-before', 'rk-after', 'rk-end'));
       const cell = gridCell(e, canvas);
       const gh = canvas.querySelector('.pghost');
-      if (gh) { gh.hidden = false; gh.style.left = cell.c * CELL_W + 'px'; gh.style.top = cell.r * CELL_H + 'px'; gh.style.height = dragRows() * CELL_H - 8 + 'px'; }
+      if (gh) { gh.hidden = false; gh.style.left = cell.abs * cell.cw + 'px'; gh.style.top = cell.r * cell.ch + 'px'; gh.style.width = 128 * (cell.cw / CELL_W) + 'px'; gh.style.height = (dragRows() * CELL_H - 8) * (cell.ch / CELL_H) + 'px'; }
       return;
     }
     $$('.pghost').forEach((g) => { g.hidden = true; });
@@ -4394,6 +4450,8 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     document.addEventListener('mouseout', onTipOut);
     document.addEventListener('mousemove', onTipMove);
     document.addEventListener('dragstart', onDragStart);
+    let rsz = null;
+    window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(syncGridWidth, 150); });
     // Ctrl + wheel over the plan grid zooms it instead of the page
     document.addEventListener('wheel', (e) => {
       if (!(e.ctrlKey || e.metaKey) || !e.target.closest || !e.target.closest('.pgridwrap')) return;

@@ -392,6 +392,7 @@
     return devicesHtml(v, a);
   }
   function afterTab() {
+    if (S.tab === 'devices' && S.devView === 'racks') setTimeout(syncGridWidth, 0);
     if (S.tab === 'devices' && S.devView === 'list') { applyFilter(); updateBulk(); }
   }
   // Re-validate after a field edit without rebuilding inputs (keeps focus and caret).
@@ -995,44 +996,66 @@
   const zoomOf = () => { const z = Number(prefs.planZoom); return Number.isFinite(z) && z >= ZOOM_MIN && z <= ZOOM_MAX ? z : 1; };
   function setZoom(z) {
     z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
+    if (z === zoomOf()) return;
     prefs.planZoom = z;
     savePrefs();
-    const inner = $('.pgrid-in');
-    if (inner) inner.style.zoom = z;
-    const val = $('.pzoom-val');
-    if (val) val.textContent = Math.round(z * 100) + '%';
+    renderTab();
   }
+  // the zoom at which every rack fits: across (both sides' used columns) and down (into the window)
   function fitZoom() {
+    const v = cur();
+    if (!v) return;
+    const lay = C.gridLayout(v, 64);
+    const used = { L: 0, R: 0 };
+    let rows = 6;
+    for (const it of lay) { used[it.side] = Math.max(used[it.side], it.c + 1); rows = Math.max(rows, it.r + it.h); }
+    const colsNeeded = Math.max(2, used.L + used.R + 1);
+    const W = gridWidth();
+    const availH = Math.max(240, window.innerHeight - 170);
+    setZoom(Math.min(ZOOM_MAX, (W + 14) / (colsNeeded * CELL_W), availH / ((rows + 1) * CELL_H)));
     const wrap = $('.pgridwrap');
-    const inner = $('.pgrid-in');
-    if (!wrap || !inner) return;
-    const z = zoomOf();
-    const natW = inner.offsetWidth;
-    const natH = inner.offsetHeight;
-    // the whole grid in the window: as wide as the card allows, as tall as the window minus the zoom bar
-    const availH = Math.max(240, window.innerHeight - 110);
-    setZoom(Math.min(ZOOM_MAX, (wrap.clientWidth - 8) / natW, availH / natH) || z);
-    try { wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { /* ignore */ }
+    try { if (wrap) wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { /* ignore */ }
   }
+
   const CELL_W = 142;
   const CELL_H = 30;
+  // width the grid can use: the plan card's inner width (measured after each draw)
+  const gridWidth = () => S.gridW || Math.max(320, Math.min(window.innerWidth - 120, 1600));
+  function gridGeom() {
+    const z = zoomOf();
+    const cw = CELL_W * z;
+    const ch = CELL_H * z;
+    const W = gridWidth();
+    const cols = Math.max(2, Math.floor((W + 14 * z) / cw));
+    return { z, cw, ch, W, cols, half: Math.floor(cols / 2) };
+  }
   function gridHtml(v, a, L, deck) {
     const ro = S.readOnly;
-    const lay = C.gridLayout(v);
+    const g = gridGeom();
+    const lay = C.gridLayout(v, g.half);
     const rows = Math.max(18, ...lay.map((x) => x.r + x.h)) + 4;
-    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" data-h="' + it.h + '" style="left:' + it.c * CELL_W + 'px;top:' + it.r * CELL_H + 'px;height:' + (it.h * CELL_H - 8) + 'px">' +
-      (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div>').join('');
+    const abs = (it) => (it.side === 'L' ? it.c : g.cols - 1 - it.c);
+    // only racks and the squares scale; the work area keeps its width, so zooming out opens up columns
+    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" style="left:' + abs(it) * g.cw + 'px;top:' + it.r * g.ch + 'px;width:' + 128 * g.z + 'px;height:' + (it.h * CELL_H - 8) * g.z + 'px">' +
+      '<div class="pcell-in" style="zoom:' + g.z + ';height:' + (it.h * CELL_H - 8) + 'px">' + (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div></div>').join('');
     const adds = (sd) => (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>');
-    const w = C.GRID_COLS * CELL_W - 14;
-    const z = zoomOf();
-    const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the plan"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
-      '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(z * 100) + '%</button>' +
+    const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the racks"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
+      '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(g.z * 100) + '%</button>' +
       '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="+1" aria-label="Zoom in">+</button>' +
-      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Fit the whole plan on screen">Fit</button><span class="muted">Ctrl + mouse wheel zooms too</span></div>';
-    return '<div class="pgridwrap">' + zoomBar + '<div class="pgrid-in" style="width:' + w + 'px;zoom:' + z + '">' +
+      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen">Fit</button><span class="muted">Ctrl + mouse wheel zooms the racks too</span></div>';
+    const halfW = g.half * g.cw;
+    return '<div class="pgridwrap">' + zoomBar +
       '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
-      '<div class="pcanvas" style="height:' + rows * CELL_H + 'px;--cw:' + CELL_W + 'px;--ch:' + CELL_H + 'px">' + deck + items + '<div class="pghost" hidden></div></div>' +
-      '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div></div>';
+      '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" style="height:' + rows * g.ch + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
+      '<div class="ptint ptint-L" style="width:' + halfW + 'px"></div><div class="ptint ptint-R" style="width:' + halfW + 'px"></div>' + deck + items + '<div class="pghost" hidden></div></div>' +
+      '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div>';
+  }
+  // after drawing: if the card's width changed, draw again with the right number of columns
+  function syncGridWidth() {
+    const wrap = $('.pgridwrap');
+    if (!wrap) return;
+    const w = wrap.clientWidth;
+    if (w && Math.abs(w - (S.gridW || 0)) > 2) { S.gridW = w; renderTab(); }
   }
   // every address of the network block in rows of ten; used numbers coloured by zone, free ones add an amp there
   function ipGridHtml(v, a) {
@@ -1388,7 +1411,7 @@
     S.grab = null;
     const holder = (rk || one || (sl && sl.closest('.psingle'))) ;
     if (holder) { const b = holder.getBoundingClientRect(); S.grab = { dx: e.clientX - b.left, dy: e.clientY - b.top }; }
-    else if (sl) { const b = sl.getBoundingClientRect(); S.grab = { dx: Math.min(60, e.clientX - b.left), dy: e.clientY - b.top + 2 * CELL_H }; }
+    else if (sl) { const b = sl.getBoundingClientRect(); S.grab = { dx: Math.min(60 * zoomOf(), e.clientX - b.left), dy: e.clientY - b.top + 2 * CELL_H * zoomOf() }; }
     if (rk && !S.readOnly) {
       S.dragRack = rk.dataset.rid;
       try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
@@ -1414,9 +1437,14 @@
   function gridCell(e, canvas) {
     const b = canvas.getBoundingClientRect();
     const g = S.grab || { dx: 20, dy: 20 };
-    // the canvas may be zoomed: its box is in screen pixels, cells are in plan pixels
-    const z = b.width / canvas.offsetWidth || 1;
-    return { c: Math.max(0, Math.min(C.GRID_COLS - 1, Math.round((e.clientX - b.left - g.dx) / (CELL_W * z)))), r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / (CELL_H * z))) };
+    const cols = +canvas.dataset.cols;
+    const half = +canvas.dataset.half;
+    const cw = +canvas.dataset.cw;
+    const ch = +canvas.dataset.ch;
+    const abs = Math.max(0, Math.min(cols - 1, Math.round((e.clientX - b.left - g.dx) / cw)));
+    const side = abs < cols / 2 ? 'L' : 'R';
+    const c = Math.min(half - 1, side === 'L' ? abs : cols - 1 - abs);
+    return { side, c, r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / ch)), abs: side === 'L' ? c : cols - 1 - c, cw, ch, half };
   }
   function dragRows() {
     const v = cur();
@@ -1436,7 +1464,7 @@
       if (!src) return;
       pushUndo(v, copy ? 'rack-copy' : 'rack-move');
       const key = copy ? 'r:' + copyRack(v, src).id : 'r:' + rackId;
-      C.placeOnGrid(v, key, cell.c, cell.r);
+      C.placeOnGrid(v, key, cell.side, cell.c, cell.r, cell.half);
       touch(v);
       render();
       if (copy) toast('Copied ' + src.name + '.', undoAction());
@@ -1448,7 +1476,7 @@
     let id = d.id;
     if (copy) id = copyAmp(v, d).id;
     else if (C.rackById(v, d.rack)) C.placeDevice(v, d.id, '', -1);
-    C.placeOnGrid(v, 'd:' + id, cell.c, cell.r);
+    C.placeOnGrid(v, 'd:' + id, cell.side, cell.c, cell.r, cell.half);
     touch(v);
     render();
     if (copy) toast('Copied ' + (C.presetOf(v, d) || C.modelOf(d.model).label) + '.', undoAction());
@@ -1463,7 +1491,7 @@
       $$('.drop-hover, .rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('drop-hover', 'rk-before', 'rk-after', 'rk-end'));
       const cell = gridCell(e, canvas);
       const gh = canvas.querySelector('.pghost');
-      if (gh) { gh.hidden = false; gh.style.left = cell.c * CELL_W + 'px'; gh.style.top = cell.r * CELL_H + 'px'; gh.style.height = dragRows() * CELL_H - 8 + 'px'; }
+      if (gh) { gh.hidden = false; gh.style.left = cell.abs * cell.cw + 'px'; gh.style.top = cell.r * cell.ch + 'px'; gh.style.width = 128 * (cell.cw / CELL_W) + 'px'; gh.style.height = (dragRows() * CELL_H - 8) * (cell.ch / CELL_H) + 'px'; }
       return;
     }
     $$('.pghost').forEach((g) => { g.hidden = true; });
@@ -1781,6 +1809,8 @@
     document.addEventListener('mouseout', onTipOut);
     document.addEventListener('mousemove', onTipMove);
     document.addEventListener('dragstart', onDragStart);
+    let rsz = null;
+    window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(syncGridWidth, 150); });
     // Ctrl + wheel over the plan grid zooms it instead of the page
     document.addEventListener('wheel', (e) => {
       if (!(e.ctrlKey || e.metaKey) || !e.target.closest || !e.target.closest('.pgridwrap')) return;

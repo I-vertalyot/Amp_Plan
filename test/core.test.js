@@ -458,20 +458,28 @@ t('single amps take a place among the racks', () => {
   assert.deepStrictEqual(C.planItems(back, 'R').map((x) => x.key), C.planItems(v, 'R').map((x) => x.key));
 });
 
-t('plan grid: one cell per amp, snapping and sides', () => {
+t('plan grid: one cell per amp, counted from each side edge', () => {
   const v = C.makeExample();
-  const lay = C.gridLayout(v);
-  for (const a of lay) for (const b of lay) if (a !== b && a.c === b.c) assert.ok(a.r + a.h <= b.r || b.r + b.h <= a.r, 'no overlap');
+  const lay = C.gridLayout(v, 4);
+  for (const a of lay) for (const b of lay) if (a !== b && a.side === b.side && a.c === b.c) assert.ok(a.r + a.h <= b.r || b.r + b.h <= a.r, 'no overlap');
   const r1 = v.racks[0];
-  C.placeOnGrid(v, 'r:' + r1.id, 6, 0);
+  C.placeOnGrid(v, 'r:' + r1.id, 'R', 2, 0, 4);
   assert.strictEqual(r1.side, 'R');
-  const taken = C.gridLayout(v).find((x) => x.key === 'r:' + r1.id);
-  assert.strictEqual(taken.c, 6);
+  assert.deepStrictEqual(r1.pos, { c: 2, r: 0, v: 2 });
   const r2 = v.racks[1];
-  C.placeOnGrid(v, 'r:' + r2.id, 6, 1);
-  const p2 = C.gridLayout(v).find((x) => x.key === 'r:' + r2.id);
-  assert.ok(p2.r >= taken.r + taken.h, 'slides below the rack already there');
-  assert.strictEqual(C.placeOnGrid(v, 'r:nope', 0, 0), false);
+  C.placeOnGrid(v, 'r:' + r2.id, 'R', 2, 1, 4);
+  const p2 = C.gridLayout(v, 4).find((x) => x.key === 'r:' + r2.id);
+  assert.ok(p2.r >= r1.size + 2, 'slides below the rack already there');
+  // zoomed out: 8 columns a side, positions keep their place from the edge
+  const wide = C.gridLayout(v, 8).find((x) => x.key === 'r:' + r1.id);
+  assert.strictEqual(wide.c, 2);
+  // old 8-column positions are read as left / right
+  const raw = JSON.parse(JSON.stringify(C.serialize(v)));
+  raw.racks[0].pos = { c: 6, r: 3 };
+  const back = C.sanitizeVenue(v.id, raw);
+  assert.strictEqual(back.racks[0].side, 'R');
+  assert.deepStrictEqual(back.racks[0].pos, { c: 1, r: 3, v: 2 });
+  assert.strictEqual(C.placeOnGrid(v, 'r:nope', 'L', 0, 0, 4), false);
 });
 
 console.log('\nall', n, 'tests passed');
