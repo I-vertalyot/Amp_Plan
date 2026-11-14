@@ -2962,6 +2962,9 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     if (known && per >= max) per = 0;
     return { id: '', model: known ? model : 'Custom', custom: known ? '' : $('#sp-custom', m).value.trim(), qty: C.clampInt($('#sp-qty', m).value, 1, 999, 1), zone: $('#sp-zone', m).value, amp, per };
   }
+  // starting value for "Speakers per amp": your own default where set (K2 → 2), otherwise the L-Acoustics maximum
+  const DEFAULT_PER = { K2: 2 };
+  const defaultPer = (id, amp) => Math.min(DEFAULT_PER[id] || C.driveMax(id, amp), C.driveMax(id, amp));
   function openAddSpeakers() {
     const v = cur();
     if (!v || S.readOnly) return;
@@ -2988,7 +2991,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
           const keep = opts.indexOf(amp.value) >= 0 ? amp.value : opts[0];
           amp.innerHTML = opts.map((x) => '<option value="' + esc(x) + '"' + (x === keep ? ' selected' : '') + '>' + esc(x) + (known ? ' · up to ' + C.driveMax(id, x) + ' per amp' : '') + '</option>').join('');
           $('#sp-custom-f', m).hidden = known;
-          if (known) { per.value = C.driveMax(id, amp.value); per.max = C.driveMax(id, amp.value); } else { per.max = 64; if (!+per.value) per.value = 4; }
+          if (known) { per.max = C.driveMax(id, amp.value); per.value = defaultPer(id, amp.value); } else { per.max = 64; if (!+per.value) per.value = 4; }
         };
         const calc = () => {
           const g = readSpeaker(m);
@@ -3001,7 +3004,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
             '<div class="calc-sub">' + esc(e ? 'As racks: ' + C.rackText(e, C.rackSizeOf(v, g.amp)) + '.' : need ? 'Not packed in racks.' : '') + ' The amps get IP addresses straight away.</div>';
         };
         model.addEventListener('change', () => { fillAmps(); calc(); });
-        amp.addEventListener('change', () => { if (C.SPEAKER_MAP[model.value]) { per.value = C.driveMax(model.value, amp.value); per.max = per.value; } calc(); });
+        amp.addEventListener('change', () => { if (C.SPEAKER_MAP[model.value]) { per.max = C.driveMax(model.value, amp.value); per.value = defaultPer(model.value, amp.value); } calc(); });
         m.addEventListener('input', calc);
         fillAmps();
         calc();
