@@ -435,6 +435,29 @@
       '</div></header>';
   }
 
+  // ---------------------------------------------------------------- LCD digits (digital-watch style)
+  // 7-segment glyphs drawn as SVG, with faint "ghost" segments like a real LCD. Text stays readable
+  // to screen readers through a hidden copy.
+  const SEG_PATH = {
+    a: '2,1 3,0 9,0 10,1 9,2 3,2', g: '2,10 3,9 9,9 10,10 9,11 3,11', d: '2,19 3,18 9,18 10,19 9,20 3,20',
+    f: '1,2 2,3 2,8 1,9 0,8 0,3', b: '11,2 12,3 12,8 11,9 10,8 10,3', e: '1,11 2,12 2,17 1,18 0,17 0,12', c: '11,11 12,12 12,17 11,18 10,17 10,12',
+  };
+  const SEG_ON = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg', '-': 'g' };
+  function lcd(text, cls) {
+    let x = 0;
+    let out = '';
+    for (const ch of String(text)) {
+      if (ch === '.') { out += '<rect class="on" x="' + (x + 0.5) + '" y="18" width="2" height="2"/>'; x += 4; continue; }
+      if (ch === ' ') { x += 6; continue; }
+      if (ch === '/') { out += '<polygon class="on" points="' + (x + 6) + ',2 ' + (x + 7.6) + ',2 ' + (x + 1.6) + ',20 ' + x + ',20"/>'; x += 9; continue; }
+      const on = SEG_ON[ch];
+      if (on == null) continue;
+      out += '<g transform="translate(' + x + ' 0)">' + Object.keys(SEG_PATH).map((k) => '<polygon class="' + (on.indexOf(k) >= 0 ? 'on' : 'off') + '" points="' + SEG_PATH[k] + '"/>').join('') + '</g>';
+      x += 15;
+    }
+    const w = Math.max(1, x - 3);
+    return '<span class="lcdnum' + (cls ? ' ' + cls : '') + '"><svg viewBox="-0.5 -0.5 ' + (w + 1) + ' 21" style="aspect-ratio:' + (w + 1) + '/21" aria-hidden="true">' + out + '</svg><span class="sr-only">' + esc(text) + '</span></span>';
+  }
   function summaryHtml(v, a) {
     const s = a.stats;
     const sev = s.errors ? 'error' : s.warns ? 'warn' : 'ok';
@@ -445,11 +468,11 @@
     const sp = C.speakerPlan(v);
     return '<section class="summary" id="summary" aria-label="Plan summary">' +
       '<button class="pill sev-' + sev + '" data-act="tab" data-tab="checks"><span class="pill-ico">' + (sev === 'ok' ? ICON.ok : SEV_ICON[sev]) + '</span><span>' + esc(main) + '<span class="pill-sub">' + esc(sub) + '</span></span></button>' +
-      '<button class="fact fact-btn" data-act="tab" data-tab="speakers"><span>Speakers</span><b>' + sp.enclosures + '</b></button>' +
-      '<button class="fact fact-btn" data-act="tab" data-tab="speakers"><span>Amps</span><b>' + cp.ampTotal + (cp.ampTotal ? '<small>' + esc(C.rackSummary(cp)) + '</small>' : '') + '</b></button>' +
-      '<div class="fact"><span>Units in LA NWM</span><b>' + s.units + '<small>/ 253</small></b></div>' +
-      '<div class="fact"><span>Free on ' + esc(a.info.blockStr || '—') + '.x</span><b>' + (a.info.ok ? s.free : '—') + '</b></div>' +
-      '<div class="fact wide"><span>LA Network Manager scan range</span><div class="row"><b class="mono">' + esc(scan) + '</b>' +
+      '<button class="fact fact-btn" data-act="tab" data-tab="speakers"><span>Speakers</span><b>' + lcd(sp.enclosures) + '</b></button>' +
+      '<button class="fact fact-btn" data-act="tab" data-tab="speakers"><span>Amps</span><b>' + lcd(cp.ampTotal) + (cp.ampTotal ? '<small>' + esc(C.rackSummary(cp)) + '</small>' : '') + '</b></button>' +
+      '<div class="fact"><span>Units in LA NWM</span><b>' + lcd(s.units) + '<small>/ 253</small></b></div>' +
+      '<div class="fact"><span>Free on ' + esc(a.info.blockStr || '—') + '.x</span><b>' + (a.info.ok ? lcd(s.free) : lcd('---')) + '</b></div>' +
+      '<div class="fact wide"><span>LA Network Manager scan range</span><div class="row"><b class="scan">' + (s.scanFrom != null ? lcd(ip(s.scanFrom) + ' - ' + ip(s.scanTo), 'small') : esc(scan)) + '</b>' +
       (s.scanFrom != null ? '<button class="btn-mini" data-act="copy-scan">Copy</button>' : '') + '</div></div></section>';
   }
 
