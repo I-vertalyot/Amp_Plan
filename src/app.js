@@ -966,7 +966,7 @@
         (n ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(n / 3)) + '">' + items.map((it) => (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev))).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
         (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>') + '</section>';
     }).join('');
-    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them, or onto an empty spot to take one out of its rack.</p>';
+    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them, or onto an empty spot to take one out of its rack. Hold Ctrl while dropping to copy an amp, a rack, or a preset onto another amp.</p>';
     const callout = !ro && !racks.length && loose.length
       ? '<div class="plan-callout"><div><b>' + esc(C.plural(loose.length, 'amp')) + ' not in racks yet</b><span>Pack into racks puts each zone’s amps on its side of the stage, filling L-Acoustics racks of 3. You can move them afterwards.</span></div><button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button></div>'
       : '';
@@ -1331,23 +1331,28 @@
     const rk = !sl && e.target.closest && e.target.closest('.prack[data-rid]');
     if (rk && !S.readOnly) {
       S.dragRack = rk.dataset.rid;
-      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
+      try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
       rk.classList.add('rk-dragging');
       $('#tip').hidden = true;
       return;
     }
     if (!sl || S.readOnly) return;
     S.drag = sl.dataset.dev;
-    try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', sl.dataset.dev); } catch (x) { /* older browsers */ }
+    try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', sl.dataset.dev); } catch (x) { /* older browsers */ }
     sl.classList.add('dragging');
     $('#tip').hidden = true;
   }
+  const wantsCopy = (e) => !!(e.ctrlKey || e.metaKey || e.altKey);
   function onDragOver(e) {
+    if (S.dragRack || S.drag) {
+      S.dragCopy = wantsCopy(e);
+      document.body.classList.toggle('drag-copy', S.dragCopy);
+    }
     if (S.dragRack) {
       const t = rackDropTarget(e.target);
       if (!t) return;
       e.preventDefault();
-      try { e.dataTransfer.dropEffect = 'move'; } catch (x) { /* ignore */ }
+      try { e.dataTransfer.dropEffect = S.dragCopy ? 'copy' : 'move'; } catch (x) { /* ignore */ }
       $$('.rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('rk-before', 'rk-after', 'rk-end'));
       if (t.classList.contains('pside')) t.classList.add('rk-end');
       else if (t.dataset.rid !== S.dragRack) t.classList.add(rackSide(t, e) ? 'rk-after' : 'rk-before');
@@ -1357,7 +1362,7 @@
     const t = dropTarget(e.target);
     if (!t) return;
     e.preventDefault();
-    try { e.dataTransfer.dropEffect = 'move'; } catch (x) { /* ignore */ }
+    try { e.dataTransfer.dropEffect = S.dragCopy ? 'copy' : 'move'; } catch (x) { /* ignore */ }
     $$('.rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('rk-before', 'rk-after', 'rk-end'));
     if (t.matches(ITEM_SEL)) { if (t.dataset.did !== S.drag) t.classList.add(rackSide(t, e) ? 'rk-after' : 'rk-before'); return; }
     if (t.classList.contains('pside')) { t.classList.add('rk-end'); return; }
@@ -1370,10 +1375,31 @@
   function onDragEnd() {
     S.drag = null;
     S.dragRack = null;
+    S.dragCopy = false;
+    document.body.classList.remove('drag-copy');
     clearRackMarks();
     $$('.dragging, .drop-hover').forEach((x) => x.classList.remove('dragging', 'drop-hover'));
   }
+  // Ctrl + drag: a copy of the amp (same preset, model and zone, next free IP), or of a whole rack with its amps.
+  // Ctrl + drop on another amp copies just the preset onto it.
+  function copyAmp(v, src) {
+    const pre = C.presetOf(v, src);
+    const i = C.netInfo(v);
+    const host = firstFreeHost(v, C.analyze(v), src.zone, src.model);
+    const z = v.zones.find((x) => x.id === src.zone);
+    const base = (z ? z.name + ' ' : '') + (pre || C.modelOf(src.model).label);
+    const d = C.newDevice({ name: base + ' ' + C.nextIndex(v, base), model: src.model, zone: src.zone, preset: pre, location: src.location, net: src.net });
+    if (host && i.blockStr) d.ip = i.blockStr + '.' + host;
+    v.devices.push(d);
+    return d;
+  }
+  function copyRack(v, r) {
+    const nr = C.addRack(v, { name: C.nextRackName(v), side: r.side, size: r.size, type: r.type });
+    C.rackSlots(v, r).forEach((d, k) => { if (d) { const c = copyAmp(v, d); C.placeDevice(v, c.id, nr.id, k); } });
+    return nr;
+  }
   function onDrop(e) {
+    const copy = !!(S.dragCopy || wantsCopy(e));
     if (S.dragRack) {
       const t = rackDropTarget(e.target);
       const id = S.dragRack;
@@ -1386,6 +1412,19 @@
       const sideEl = t.closest('.pside');
       const side = sideEl ? sideEl.dataset.side : '';
       const tgt = t.classList.contains('pside') ? '' : itemKey(t);
+      if (copy) {
+        const src = C.rackById(v, id);
+        if (!src) return;
+        const n = v.devices.filter((d) => d.rack === id && C.isAmpModel(d.model)).length;
+        if (v.devices.length + n > C.MAX_DEVICES) { toast('A venue holds up to ' + C.MAX_DEVICES + ' devices.'); return; }
+        pushUndo(v, 'rack-copy');
+        const nr = copyRack(v, src);
+        C.moveItem(v, 'r:' + nr.id, side || src.side, tgt, after);
+        touch(v);
+        render();
+        toast('Copied ' + src.name + ' as ' + nr.name + (n ? ' with ' + C.plural(n, 'amp') : '') + '.', undoAction());
+        return;
+      }
       const snap = JSON.stringify({ r: v.racks, o: v.planOrder });
       pushUndo(v, 'rack-move');
       if (!C.moveItem(v, 'r:' + id, side, tgt, after)) { const o = JSON.parse(snap); v.racks = o.r; v.planOrder = o.o; S.undo.pop(); return; }
@@ -1403,6 +1442,35 @@
     if (!v || S.readOnly) return;
     const d = v.devices.find((x) => x.id === id);
     if (!d) return;
+    if (copy) {
+      const hit = e.target.closest && e.target.closest('.pslot[data-dev]');
+      const target = hit ? v.devices.find((x) => x.id === hit.dataset.dev) : null;
+      const pre = C.presetOf(v, d);
+      if (target) {
+        // onto another amp: copy the preset only
+        if (target.id === d.id) return;
+        if (target.drives) { toast((target.name || 'That amp') + ' takes its preset from Speakers & amps. Open it and pick “Use another preset on this amp” first.'); return; }
+        if (!pre) { toast('That amp has no preset to copy.'); return; }
+        pushUndo(v, 'preset-copy');
+        target.preset = pre;
+        touch(v);
+        render();
+        toast('Copied preset ' + pre + ' to ' + C.slotLabel(v, target, C.netInfo(v)) + '.', undoAction());
+        return;
+      }
+      if (v.devices.length >= C.MAX_DEVICES) { toast('A venue holds up to ' + C.MAX_DEVICES + ' devices.'); return; }
+      pushUndo(v, 'amp-copy');
+      const c = copyAmp(v, d);
+      if (t.classList.contains('pslot')) C.placeDevice(v, c.id, t.dataset.rack || '', t.dataset.slot != null ? +t.dataset.slot : -1);
+      else {
+        const sideEl = t.closest('.pside');
+        C.moveItem(v, 'd:' + c.id, sideEl ? sideEl.dataset.side : C.singleSide(v, d), t.classList.contains('pside') ? '' : itemKey(t), t.classList.contains('pside') ? false : rackSide(t, e));
+      }
+      touch(v);
+      render();
+      toast('Copied ' + (pre || C.modelOf(d.model).label) + ' as ' + C.slotLabel(v, c, C.netInfo(v)) + '.', undoAction());
+      return;
+    }
     if (t.classList.contains('pslot')) {
       const rid = t.dataset.rack || '';
       const k = t.dataset.slot != null ? +t.dataset.slot : -1;

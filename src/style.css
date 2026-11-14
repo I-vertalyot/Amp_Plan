@@ -1053,3 +1053,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .prack .pslot.p-empty[data-act="amp-new"]:hover { font-size: 0 !important; }
 .prack .pslot.p-empty[data-act="amp-new"]:hover::before { content: "+ Add amp"; font-size: 12px; }
 .plan[data-layout="night"] .prack .pslot.p-empty[data-act="amp-new"]:hover::before { font-size: 13px; }
+
+/* Ctrl held while dragging: show that the drop makes a copy */
+body.drag-copy .drop-hover, body.drag-copy .rk-before, body.drag-copy .rk-after, body.drag-copy .rk-end { outline: 2px dashed #2e9d5b; outline-offset: 2px; }
+body.drag-copy .pslot.drop-hover::after { content: "+"; position: absolute; right: 6px; top: 2px; font: 700 14px var(--font-mono); color: #fff; }
+.pslot { position: relative; }
