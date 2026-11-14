@@ -1069,6 +1069,13 @@ body.drag-copy .drop-hover, body.drag-copy .rk-before, body.drag-copy .rk-after,
 body.drag-copy .pslot.drop-hover::after { content: "+"; position: absolute; right: 6px; top: 2px; font: 700 14px var(--font-mono); color: #fff; }
 .pslot { position: relative; }
 
+/* Stage plot: "STAGE" is just a faint word printed on the floor plan, behind the racks; it takes no space and never blocks a drop */
+.plan[data-layout="stage"] .pstage { position: relative; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "L R" "foh foh"; }
+.plan[data-layout="stage"] .pdeck { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); height: auto; padding: 0; background: none; box-shadow: none; border-radius: 0;
+  color: rgba(29, 31, 28, .13); font: 700 64px/1 var(--font-mono); letter-spacing: .5em; margin-right: -.5em; pointer-events: none; user-select: none; z-index: 0; white-space: nowrap; }
+.plan[data-layout="stage"] .pside { position: relative; z-index: 1; }
+@media (max-width: 900px) { .plan[data-layout="stage"] .pstage { grid-template-columns: 1fr; grid-template-areas: "L" "R" "foh"; } .plan[data-layout="stage"] .pdeck { font-size: 40px; top: 40px; } }
+
 </style>
 </head>
 <body>
