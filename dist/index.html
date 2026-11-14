@@ -1131,6 +1131,13 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 /* right half tinted orange (the app's orange, #fca311), matching the left half's blue */
 .pcanvas::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 50%; background: rgba(252, 163, 17, .16); border-radius: 0 3px 3px 0; pointer-events: none; z-index: 0; }
 
+/* zoom bar above the plan grid */
+.pzoom { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 8px; font-size: 12px; }
+.pzoom .btn-mini { min-width: 30px; height: 28px; font-weight: 700; }
+.pzoom .pzoom-val { min-width: 56px; font-variant-numeric: tabular-nums; }
+.pzoom .muted { margin-left: 8px; }
+.pgridwrap { max-height: none; }
+
 </style>
 </head>
 <body>
@@ -3595,6 +3602,31 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   }
   // ---- the free grid (Monitors and Stage plot): one cell = one amp; racks and single amps snap to cells
   const GRID_LAYOUTS = { monitors: 1, stage: 1 };
+  // zoom of the grid, remembered per browser: 30%–150%
+  const ZOOM_MIN = 0.3;
+  const ZOOM_MAX = 1.5;
+  const zoomOf = () => { const z = Number(prefs.planZoom); return Number.isFinite(z) && z >= ZOOM_MIN && z <= ZOOM_MAX ? z : 1; };
+  function setZoom(z) {
+    z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
+    prefs.planZoom = z;
+    savePrefs();
+    const inner = $('.pgrid-in');
+    if (inner) inner.style.zoom = z;
+    const val = $('.pzoom-val');
+    if (val) val.textContent = Math.round(z * 100) + '%';
+  }
+  function fitZoom() {
+    const wrap = $('.pgridwrap');
+    const inner = $('.pgrid-in');
+    if (!wrap || !inner) return;
+    const z = zoomOf();
+    const natW = inner.offsetWidth;
+    const natH = inner.offsetHeight;
+    // the whole grid in the window: as wide as the card allows, as tall as the window minus the zoom bar
+    const availH = Math.max(240, window.innerHeight - 110);
+    setZoom(Math.min(ZOOM_MAX, (wrap.clientWidth - 8) / natW, availH / natH) || z);
+    try { wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { /* ignore */ }
+  }
   const CELL_W = 142;
   const CELL_H = 30;
   function gridHtml(v, a, L, deck) {
@@ -3605,7 +3637,12 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div>').join('');
     const adds = (sd) => (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>');
     const w = C.GRID_COLS * CELL_W - 14;
-    return '<div class="pgridwrap"><div class="pgrid-in" style="width:' + w + 'px">' +
+    const z = zoomOf();
+    const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the plan"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
+      '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(z * 100) + '%</button>' +
+      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="+1" aria-label="Zoom in">+</button>' +
+      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Fit the whole plan on screen">Fit</button><span class="muted">Ctrl + mouse wheel zooms too</span></div>';
+    return '<div class="pgridwrap">' + zoomBar + '<div class="pgrid-in" style="width:' + w + 'px;zoom:' + z + '">' +
       '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
       '<div class="pcanvas" style="height:' + rows * CELL_H + 'px;--cw:' + CELL_W + 'px;--ch:' + CELL_H + 'px">' + deck + items + '<div class="pghost" hidden></div></div>' +
       '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div></div>';
@@ -3990,7 +4027,9 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   function gridCell(e, canvas) {
     const b = canvas.getBoundingClientRect();
     const g = S.grab || { dx: 20, dy: 20 };
-    return { c: Math.max(0, Math.min(C.GRID_COLS - 1, Math.round((e.clientX - b.left - g.dx) / CELL_W))), r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / CELL_H)) };
+    // the canvas may be zoomed: its box is in screen pixels, cells are in plan pixels
+    const z = b.width / canvas.offsetWidth || 1;
+    return { c: Math.max(0, Math.min(C.GRID_COLS - 1, Math.round((e.clientX - b.left - g.dx) / (CELL_W * z)))), r: Math.max(0, Math.round((e.clientY - b.top - g.dy) / (CELL_H * z))) };
   }
   function dragRows() {
     const v = cur();
@@ -4355,6 +4394,12 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     document.addEventListener('mouseout', onTipOut);
     document.addEventListener('mousemove', onTipMove);
     document.addEventListener('dragstart', onDragStart);
+    // Ctrl + wheel over the plan grid zooms it instead of the page
+    document.addEventListener('wheel', (e) => {
+      if (!(e.ctrlKey || e.metaKey) || !e.target.closest || !e.target.closest('.pgridwrap')) return;
+      e.preventDefault();
+      setZoom(zoomOf() * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
+    }, { passive: false });
     document.addEventListener('dragover', onDragOver);
     document.addEventListener('dragleave', onDragLeave);
     document.addEventListener('drop', onDrop);
@@ -4382,6 +4427,14 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     'tab': (t) => setTab(t.dataset.tab),
     'add-devices': () => openAddDevices(),
     'add-speakers': () => openAddSpeakers(),
+    'plan-zoom': (t) => {
+      const k = t.dataset.z;
+      if (k === 'fit') return fitZoom();
+      if (k === '1x') return setZoom(1);
+      const steps = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5];
+      const z = zoomOf();
+      setZoom(k === '+1' ? steps.find((x) => x > z + 0.001) || ZOOM_MAX : steps.slice().reverse().find((x) => x < z - 0.001) || ZOOM_MIN);
+    },
     'plan-layout': (t) => { prefs.planLayout = t.dataset.layout; savePrefs(); renderTab(); },
     'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); },
     'dev-view': (t) => { S.devView = t.dataset.view === 'list' ? 'list' : 'racks'; prefs.devView = S.devView; savePrefs(); renderTab(); },

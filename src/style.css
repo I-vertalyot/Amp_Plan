@@ -1120,3 +1120,10 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .pcanvas::before { content: ""; position: absolute; left: -7px; top: 0; bottom: 0; width: calc(50% + 7px); background: rgba(58, 128, 214, .16); border-radius: 3px 0 0 3px; pointer-events: none; z-index: 0; }
 /* right half tinted orange (the app's orange, #fca311), matching the left half's blue */
 .pcanvas::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 50%; background: rgba(252, 163, 17, .16); border-radius: 0 3px 3px 0; pointer-events: none; z-index: 0; }
+
+/* zoom bar above the plan grid */
+.pzoom { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 8px; font-size: 12px; }
+.pzoom .btn-mini { min-width: 30px; height: 28px; font-weight: 700; }
+.pzoom .pzoom-val { min-width: 56px; font-variant-numeric: tabular-nums; }
+.pzoom .muted { margin-left: 8px; }
+.pgridwrap { max-height: none; }
