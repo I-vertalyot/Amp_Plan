@@ -17,14 +17,8 @@
 
   const DEFAULT_COLS = { location: true, port: true, serial: false, notes: true };
   const prefs = Object.assign({ sep: '', last: '', devView: 'racks' }, safeJson(lsGet(LS_PREFS)) || {});
-  // the look: "retro" (beige 90s office, default) or "modern" (navy and orange)
-  function applySkin() {
-    const sk = prefs.skin === 'modern' ? 'modern' : 'retro';
-    document.documentElement.dataset.skin = sk;
-    document.querySelectorAll('[data-act="skin"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.skin === sk)));
-  }
-  applySkin();
-  document.addEventListener('DOMContentLoaded', applySkin);
+  // one look: the beige 90s office (styles under [data-skin="retro"])
+  document.documentElement.dataset.skin = 'retro';
   prefs.cols = Object.assign({}, DEFAULT_COLS, prefs.cols || {});
   const savePrefs = () => lsSet(LS_PREFS, JSON.stringify(prefs));
 
@@ -1401,7 +1395,6 @@
     'tab': (t) => setTab(t.dataset.tab),
     'add-devices': () => openAddDevices(),
     'add-speakers': () => openAddSpeakers(),
-    'skin': (t) => { prefs.skin = t.dataset.skin; savePrefs(); applySkin(); },
     'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); },
     'dev-view': (t) => { S.devView = t.dataset.view === 'list' ? 'list' : 'racks'; prefs.devView = S.devView; savePrefs(); renderTab(); },
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),

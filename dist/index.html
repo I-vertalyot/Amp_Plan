@@ -725,12 +725,6 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .net.is-open .net-brief { visibility: hidden; }
 .net-edit { font-size: 13px; font-weight: 600; color: var(--ink-2); flex: none; }
 
-/* ================================================================ Look switch */
-.skin-pick { display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 12px; color: var(--muted); }
-.skin-pick span { margin-right: auto; }
-.skin-pick button { height: 24px; padding: 0 9px; border-radius: 5px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; }
-.skin-pick button[aria-pressed="true"] { background: var(--orange); color: #000; border-color: transparent; }
-
 /* ================================================================ "Office '96" look
    Taken from a mid-90s open-plan office: putty-beige CRT monitors and keyboards, blue-grey
    cubicle fabric, carpet grey, flat fluorescent light, a green-phosphor screen.
@@ -787,9 +781,6 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 :root[data-skin="retro"] .rail .venue-item.is-cur * { color: #1d1f1c; }
 :root[data-skin="retro"] .rail .btn:not(.btn-primary), :root[data-skin="retro"] .rail .btn-primary { background: var(--putty); color: #1d1f1c; }
 :root[data-skin="retro"] .rail input { background: #f3eee0; color: #1d1f1c; box-shadow: var(--bevel-in); border-color: transparent; }
-:root[data-skin="retro"] .skin-pick { color: #e7e3d6; }
-:root[data-skin="retro"] .skin-pick button { border-color: #6b767c; }
-:root[data-skin="retro"] .skin-pick button[aria-pressed="true"] { background: var(--putty); color: #1d1f1c; box-shadow: var(--bevel-in); }
 :root[data-skin="retro"] .topbar { background: var(--fabric); color: #f4f1e8; border-bottom: 3px solid var(--putty-lo); }
 
 /* cards: monitor housings, putty plastic with a bevel */
@@ -874,7 +865,6 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     </div>
     <div class="rail-search"><label class="sr-only" for="venue-q">Search venues</label><input id="venue-q" type="search" placeholder="Search venues" autocomplete="off"></div>
     <div class="venue-scroll" id="venue-scroll"></div>
-    <div class="skin-pick" role="group" aria-label="Look"><span>Look</span><button type="button" data-act="skin" data-skin="retro">Office ’96</button><button type="button" data-act="skin" data-skin="modern">Modern</button></div>
     <div class="rail-foot" id="store-status" role="status"><span class="dot busy"></span><span>Opening saved plans…</span></div>
   </aside>
   <div class="rail-shade" data-act="rail-close"></div>
@@ -2207,14 +2197,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 
   const DEFAULT_COLS = { location: true, port: true, serial: false, notes: true };
   const prefs = Object.assign({ sep: '', last: '', devView: 'racks' }, safeJson(lsGet(LS_PREFS)) || {});
-  // the look: "retro" (beige 90s office, default) or "modern" (navy and orange)
-  function applySkin() {
-    const sk = prefs.skin === 'modern' ? 'modern' : 'retro';
-    document.documentElement.dataset.skin = sk;
-    document.querySelectorAll('[data-act="skin"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.skin === sk)));
-  }
-  applySkin();
-  document.addEventListener('DOMContentLoaded', applySkin);
+  // one look: the beige 90s office (styles under [data-skin="retro"])
+  document.documentElement.dataset.skin = 'retro';
   prefs.cols = Object.assign({}, DEFAULT_COLS, prefs.cols || {});
   const savePrefs = () => lsSet(LS_PREFS, JSON.stringify(prefs));
 
@@ -3591,7 +3575,6 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     'tab': (t) => setTab(t.dataset.tab),
     'add-devices': () => openAddDevices(),
     'add-speakers': () => openAddSpeakers(),
-    'skin': (t) => { prefs.skin = t.dataset.skin; savePrefs(); applySkin(); },
     'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); },
     'dev-view': (t) => { S.devView = t.dataset.view === 'list' ? 'list' : 'racks'; prefs.devView = S.devView; savePrefs(); renderTab(); },
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),
