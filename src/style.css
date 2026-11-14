@@ -1115,3 +1115,6 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .plan[data-layout="stage"] .pcanvas .pdeck { top: 60px; }
 .plan[data-layout="stage"] .pcanvas .pdeck.pdeck-foh { top: auto; bottom: 20px; }
 .plan[data-layout="stage"] .pgridwrap { border: 2px solid var(--putty-lo); border-radius: 4px; padding: 14px; }
+/* left half of the plan grid tinted blue, matching the Left label */
+.pcanvas { background-color: transparent; }
+.pcanvas::before { content: ""; position: absolute; left: -7px; top: 0; bottom: 0; width: calc(50% + 7px); background: rgba(58, 128, 214, .16); border-radius: 3px 0 0 3px; pointer-events: none; z-index: 0; }
