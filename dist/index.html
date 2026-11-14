@@ -2804,7 +2804,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
   function devicesHtml(v, a) {
     if (S.devView === 'racks') {
       const tools = '<div class="toolbar"><div class="tb-left">' + viewSwitch() +
-        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button><button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
+        (S.readOnly ? '' : '<button class="btn btn-primary" data-act="amp-new">Add 1 amp</button><button class="btn" data-act="amp-new" data-loose="1">Add amp without rack</button><button class="btn" data-act="add-rack">Add L-Acoustics rack</button><button class="btn" data-act="auto-assign">Auto-assign IPs</button><button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
         '</div></div>';
       return tools + planHtml(v, a);
     }
@@ -3122,7 +3122,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     }).join('');
     const tray = '<section class="ptray" aria-label="Amps not in a rack"><div class="ptray-head"><b>Not in a rack</b><span class="muted">' + esc(C.plural(loose.length, 'amp')) + '</span><span class="ptray-actions">' +
       (!ro && loose.length ? '<button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button>' : '') +
-      (ro ? '' : '<button type="button" class="btn" data-act="amp-new">+ Amp</button>') + '</span></div>' +
+      (ro ? '' : '<button type="button" class="btn" data-act="amp-new" data-loose="1">+ Amp without rack</button>') + '</span></div>' +
       '<div class="ptray-items">' + (loose.length ? loose.map((d) => ampChip(v, a, d, '')).join('')
         : '<span class="muted">' + (amps.length ? 'Every amp is in a rack. Drag one here to take it out.' : 'No amps yet. Add speakers on the Speakers & amps tab, or add a rack and fill its slots.') + '</span>') + '</div></section>';
     const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them.</p>';
@@ -3641,6 +3641,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),
     'amp-new': (t) => {
       if (t.dataset.rack) return openAmpEditor({ rack: t.dataset.rack, slot: +t.dataset.slot });
+      if (t.dataset.loose) return openAmpEditor({ rack: '', slot: -1 });
       const v = cur();
       if (!v) return;
       const side = t.dataset.side || '';
