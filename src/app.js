@@ -940,9 +940,9 @@
   function singleHtml(v, a, d) {
     const m = C.modelOf(d.model).label;
     const L = layoutOf();
-    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack psingle plane"><div class="prack-name is-static"><span>Single</span><small>' + esc(m) + '</small></div><div class="plane-slots">' + ampChip(v, a, d, '') + '</div></div>';
-    if (L === 'fronts' || L === 'night') return '<div class="prack psingle ' + (L === 'fronts' ? 'pfr-single' : 'pnr-single') + '"><div class="prack-name is-static"><span>' + esc((d.name || m).slice(0, 22)) + '</span><small>single</small></div>' + ampChip(v, a, d, '') + '</div>';
-    return '<div class="prack psingle"><div class="prack-box" style="--n:1"><div class="prack-name is-static" title="' + esc(m) + '"><span>' + esc((d.name || m).slice(0, 18)) + '</span><small>' + esc(m) + '</small></div>' + ampChip(v, a, d, '') + '</div></div>';
+    if (L === 'lanes' || L === 'ipgrid') return '<div class="prack psingle plane" data-did="' + esc(d.id) + '"><div class="prack-name is-static"><span>Single</span><small>' + esc(m) + '</small></div><div class="plane-slots">' + ampChip(v, a, d, '') + '</div></div>';
+    if (L === 'fronts' || L === 'night') return '<div class="prack psingle ' + (L === 'fronts' ? 'pfr-single' : 'pnr-single') + '" data-did="' + esc(d.id) + '"><div class="prack-name is-static"><span>' + esc((d.name || m).slice(0, 22)) + '</span><small>single</small></div>' + ampChip(v, a, d, '') + '</div>';
+    return '<div class="prack psingle" data-did="' + esc(d.id) + '"><div class="prack-box" style="--n:1"><div class="prack-name is-static" title="' + esc(m) + '"><span>' + esc((d.name || m).slice(0, 18)) + '</span><small>' + esc(m) + '</small></div>' + ampChip(v, a, d, '') + '</div></div>';
   }
   function planHtml(v, a) {
     const ro = S.readOnly;
@@ -955,14 +955,12 @@
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
     const head = '<div class="plan-head"><div class="plan-title" aria-hidden="true"><span class="pt-amp">AMP</span><span class="pt-plan">PLAN</span></div><p class="plan-sub">' + esc(sub) + '</p>' + legend + '</div>';
     // amps outside the racks sit on their zone's side of the stage, after that side's racks
-    const sideOfAmp = (d) => { const z = v.zones.find((x) => x.id === d.zone); return z && C.SIDES.indexOf(z.side) >= 0 ? z.side : 'L'; };
     const sides = C.SIDES.map((sd) => {
-      const list = racks.filter((r) => r.side === sd);
-      const singles = loose.filter((d) => sideOfAmp(d) === sd);
-      const n = list.length + singles.length;
+      const items = C.planItems(v, sd);
+      const n = items.length;
       const label = C.SIDE_LABEL[sd];
       return '<section class="pside pside-' + sd + '" aria-label="' + label + '" data-side="' + sd + '"><div class="pside-tag">' + label + '</div>' +
-        (n ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(n / 3)) + '">' + list.map((r) => rackBoxHtml(v, a, r)).join('') + singles.map((d) => singleHtml(v, a, d)).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
+        (n ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(n / 3)) + '">' + items.map((it) => (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev))).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
         (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>') + '</section>';
     }).join('');
     const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them, or onto an empty spot to take one out of its rack.</p>';
@@ -1273,13 +1271,16 @@
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     });
   }
+  const ITEM_SEL = '.prack[data-rid], .psingle[data-did]';
+  const itemKey = (el) => (el.dataset.rid ? 'r:' + el.dataset.rid : el.dataset.did ? 'd:' + el.dataset.did : '');
+  // an amp can land in a rack slot, next to a rack or single amp, or at the end of a side
   function dropTarget(el) {
     if (!el || !el.closest) return null;
-    return el.closest('.prack:not(.psingle) .pslot') || el.closest('.pside');
+    return el.closest('.prack:not(.psingle) .pslot') || el.closest(ITEM_SEL) || el.closest('.pside');
   }
   function rackDropTarget(el) {
     if (!el || !el.closest) return null;
-    return el.closest('.prack[data-rid]') || el.closest('.pside');
+    return el.closest(ITEM_SEL) || el.closest('.pside');
   }
   function clearRackMarks() { $$('.rk-before, .rk-after, .rk-end, .rk-dragging').forEach((x) => x.classList.remove('rk-before', 'rk-after', 'rk-end', 'rk-dragging')); }
   // before or after the rack under the pointer: by the horizontal half in a row of racks, vertical half in a column (lanes)
@@ -1320,6 +1321,9 @@
     if (!t) return;
     e.preventDefault();
     try { e.dataTransfer.dropEffect = 'move'; } catch (x) { /* ignore */ }
+    $$('.rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('rk-before', 'rk-after', 'rk-end'));
+    if (t.matches(ITEM_SEL)) { if (t.dataset.did !== S.drag) t.classList.add(rackSide(t, e) ? 'rk-after' : 'rk-before'); return; }
+    if (t.classList.contains('pside')) { t.classList.add('rk-end'); return; }
     if (!t.classList.contains('drop-hover')) { $$('.drop-hover').forEach((x) => x.classList.remove('drop-hover')); t.classList.add('drop-hover'); }
   }
   function onDragLeave(e) {
@@ -1344,10 +1348,10 @@
       if (!v || S.readOnly) return;
       const sideEl = t.closest('.pside');
       const side = sideEl ? sideEl.dataset.side : '';
-      const tgt = t.classList.contains('pside') ? '' : t.dataset.rid;
-      const snap = JSON.stringify(v.racks);
+      const tgt = t.classList.contains('pside') ? '' : itemKey(t);
+      const snap = JSON.stringify({ r: v.racks, o: v.planOrder });
       pushUndo(v, 'rack-move');
-      if (!C.moveRack(v, id, side, tgt, after)) { v.racks = JSON.parse(snap); S.undo.pop(); return; }
+      if (!C.moveItem(v, 'r:' + id, side, tgt, after)) { const o = JSON.parse(snap); v.racks = o.r; v.planOrder = o.o; S.undo.pop(); return; }
       touch(v);
       render();
       return;
@@ -1362,12 +1366,22 @@
     if (!v || S.readOnly) return;
     const d = v.devices.find((x) => x.id === id);
     if (!d) return;
-    let rid = '';
-    let k = -1;
-    if (!t.classList.contains('pside')) { rid = t.dataset.rack || ''; k = t.dataset.slot != null ? +t.dataset.slot : -1; }
-    if ((C.rackById(v, d.rack) ? d.rack : '') === rid && (rid ? d.slot === k : true)) return;
-    pushUndo(v, 'move');
-    C.placeDevice(v, id, rid, k);
+    if (t.classList.contains('pslot')) {
+      const rid = t.dataset.rack || '';
+      const k = t.dataset.slot != null ? +t.dataset.slot : -1;
+      if ((C.rackById(v, d.rack) ? d.rack : '') === rid && d.slot === k) return;
+      pushUndo(v, 'move');
+      C.placeDevice(v, id, rid, k);
+    } else {
+      // out of its rack (if it was in one) and into the plan as a single amp, where it was dropped
+      const sideEl = t.closest('.pside');
+      const side = sideEl ? sideEl.dataset.side : C.singleSide(v, d);
+      const tgt = t.classList.contains('pside') ? '' : itemKey(t);
+      if (tgt === 'd:' + id) return;
+      pushUndo(v, 'move');
+      if (C.rackById(v, d.rack)) C.placeDevice(v, id, '', -1);
+      C.moveItem(v, 'd:' + id, side, tgt, t.classList.contains('pside') ? false : rackSide(t, e));
+    }
     touch(v);
     render();
   }

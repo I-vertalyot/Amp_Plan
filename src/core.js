@@ -182,6 +182,8 @@
       ip: str(o.ip, 40), net: o.net === 'sec' ? 'sec' : 'pri', location: str(o.location, 80), port: str(o.port, 80),
       serial: str(o.serial, 80), notes: str(o.notes, 300), status: STATUSES.includes(o.status) ? o.status : 'planned',
       rack: str(o.rack, 40), slot: clampInt(o.slot, -1, 15, -1), preset: str(o.preset, 40), drives: str(o.drives, 40),
+      // side of the plan for an amp outside the racks; '' = its zone's side
+      side: SIDES.indexOf(o.side) >= 0 ? o.side : '',
     };
   }
 
@@ -287,6 +289,8 @@
       speakers,
       racks,
       devices,
+      // drawing order of racks and single amps in the plan, as keys "r:<rack id>" / "d:<device id>"
+      planOrder: (Array.isArray(raw.planOrder) ? raw.planOrder : []).filter((k) => typeof k === 'string' && /^[rd]:/.test(k) && SAFE_ID.test(k.slice(2))).slice(0, 2000),
       rackSize: sanitizeRackSize(raw.rackSize),
       createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : 0,
       updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : 0,
@@ -331,10 +335,11 @@
       },
       zones: v.zones.map((z) => ({ id: z.id, name: z.name, color: z.color, side: z.side || 'L' })),
       racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '' })),
+      planOrder: (v.planOrder || []).slice(),
       speakers: (v.speakers || []).map((g) => ({ id: g.id, model: g.model, custom: g.custom || '', qty: g.qty, zone: g.zone, amp: g.amp, per: g.per || 0 })),
       devices: v.devices.map((d) => ({
         id: d.id, name: d.name, model: d.model, zone: d.zone, ip: d.ip, net: d.net, location: d.location,
-        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '',
+        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '',
       })),
       rackSize: Object.assign({}, v.rackSize || {}),
       createdAt: v.createdAt || 0, updatedAt: v.updatedAt || 0,
@@ -426,25 +431,47 @@
     d.slot = slot;
     return true;
   }
-  // Move a rack in the plan: before or after another rack, or to the end of a side. The order of
-  // v.racks is the order racks are drawn in, so the grid stays tidy wherever a rack is dropped.
-  function moveRack(v, rackId, side, targetId, after) {
-    const list = v.racks || [];
-    const r = list.find((x) => x.id === rackId);
-    if (!r || SIDES.indexOf(side) < 0 || targetId === rackId) return false;
-    const before = list.map((x) => x.id + x.side).join();
-    list.splice(list.indexOf(r), 1);
-    r.side = side;
-    const t = list.find((x) => x.id === targetId);
-    if (t) list.splice(list.indexOf(t) + (after ? 1 : 0), 0, r);
-    else {
-      // end of that side: after its last rack, or at the very end
-      let at = -1;
-      list.forEach((x, k) => { if (x.side === side) at = k; });
-      list.splice(at < 0 ? list.length : at + 1, 0, r);
-    }
-    return list.map((x) => x.id + x.side).join() !== before;
+  // ---- the plan's drawing order: racks and single amps (amps outside racks) share one order per side
+  function singleSide(v, d) {
+    if (SIDES.indexOf(d.side) >= 0) return d.side;
+    const z = v.zones.find((x) => x.id === d.zone);
+    return z && SIDES.indexOf(z.side) >= 0 ? z.side : 'L';
   }
+  // everything drawn on one side, in order: [{ key, rack } | { key, dev }]
+  function planItems(v, side) {
+    const order = new Map((v.planOrder || []).map((k, i) => [k, i]));
+    const items = [];
+    (v.racks || []).forEach((r, i) => { if (r.side === side) items.push({ key: 'r:' + r.id, rack: r, n: order.has('r:' + r.id) ? order.get('r:' + r.id) : 100000 + i }); });
+    v.devices.forEach((d, i) => {
+      if (isAmpModel(d.model) && !rackById(v, d.rack) && singleSide(v, d) === side) items.push({ key: 'd:' + d.id, dev: d, n: order.has('d:' + d.id) ? order.get('d:' + d.id) : 200000 + i });
+    });
+    return items.sort((a, b) => a.n - b.n);
+  }
+  // Move a rack ("r:id") or a single amp ("d:id") before or after another item, or to the end of a side.
+  // Items always sit in the grid in this order, so the plan stays tidy wherever one is dropped.
+  function moveItem(v, key, side, targetKey, after) {
+    if (SIDES.indexOf(side) < 0 || key === targetKey) return false;
+    const isRack = key.indexOf('r:') === 0;
+    const obj = isRack ? rackById(v, key.slice(2)) : v.devices.find((d) => d.id === key.slice(2));
+    if (!obj) return false;
+    const full = [].concat(...SIDES.map((sd) => planItems(v, sd).map((x) => x.key)));
+    const before = full.join() + '|' + (isRack ? obj.side : singleSide(v, obj));
+    if (isRack) obj.side = side; else obj.side = side;
+    const list = full.filter((k) => k !== key);
+    let at = targetKey ? list.indexOf(targetKey) : -1;
+    if (at >= 0) at += after ? 1 : 0;
+    else {
+      const onSide = planItems(v, side).map((x) => x.key).filter((k) => k !== key);
+      at = onSide.length ? list.indexOf(onSide[onSide.length - 1]) + 1 : list.length;
+    }
+    list.splice(at, 0, key);
+    v.planOrder = list;
+    // keep the rack array in the same order (the picture export draws from it)
+    const pos = new Map(list.map((k, i) => [k, i]));
+    v.racks.sort((a, b) => (pos.has('r:' + a.id) ? pos.get('r:' + a.id) : 1e9) - (pos.has('r:' + b.id) ? pos.get('r:' + b.id) : 1e9));
+    return list.join() + '|' + side !== before;
+  }
+  function moveRack(v, rackId, side, targetId, after) { return moveItem(v, 'r:' + rackId, side, targetId ? 'r:' + targetId : '', after); }
   function removeRack(v, rackId) {
     const out = [];
     for (const d of v.devices) if (d.rack === rackId) { d.rack = ''; d.slot = -1; if (isAmpModel(d.model)) out.push(d); }
@@ -1346,7 +1373,7 @@
     DEFAULT_RACK_SIZE, RACK_FOR, rackSizeOf, rackEquivalent, rackText, countPlan, rackSummary, equipmentLine,
     SPEAKERS, SPEAKER_MAP, SPEAKER_SERIES, DRIVE_AMPS, AMP_IDS, driveOptions, driveMax, drivePerOutput, speakerLabel, perAmp, ampsNeeded,
     nextIndex, syncGroup, removeGroup, speakerPlan,
-    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
+    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;

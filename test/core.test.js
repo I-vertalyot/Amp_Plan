@@ -444,4 +444,18 @@ t('move racks in the plan', () => {
   assert.strictEqual(C.moveRack(v, r1.id, 'C', '', false), false);
 });
 
+t('single amps take a place among the racks', () => {
+  const v = C.makeExample();
+  const spare = v.devices.find((d) => d.name === 'Spare');
+  const keys = (sd) => C.planItems(v, sd).map((x) => (x.rack ? x.rack.name : x.dev.name));
+  assert.strictEqual(keys('L').slice(-1)[0], 'Spare');
+  assert.ok(C.moveItem(v, 'd:' + spare.id, 'L', 'r:' + v.racks[0].id, false));
+  assert.strictEqual(keys('L')[0], 'Spare');
+  assert.ok(C.moveItem(v, 'd:' + spare.id, 'R', '', false));
+  assert.strictEqual(C.singleSide(v, spare), 'R');
+  assert.strictEqual(keys('R').slice(-1)[0], 'Spare');
+  const back = C.sanitizeVenue(v.id, JSON.parse(JSON.stringify(C.serialize(v))));
+  assert.deepStrictEqual(C.planItems(back, 'R').map((x) => x.key), C.planItems(v, 'R').map((x) => x.key));
+});
+
 console.log('\nall', n, 'tests passed');
