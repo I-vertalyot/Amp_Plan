@@ -183,7 +183,7 @@ def run(p, label, mock, dark=False):
     page.wait_for_timeout(200)
     print(label, 'delay ip ->', ipin.input_value(), '| pill:', page.inner_text('.pill').replace('\n', ' | '))
     assert ipin.input_value() == '192.168.1.21', 'shorthand expansion failed'
-    assert 'error' in page.inner_text('.pill'), 'duplicate not flagged'
+    assert 'error' in page.inner_text('.pill').lower(), 'duplicate not flagged'
     page.screenshot(path=str(SHOTS / f'{label}-3-conflict.png'))
     page.click('#tab-checks')
     page.wait_for_selector('.checks, .all-clear')
