@@ -1026,3 +1026,5 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
   .pn-ip { font-size: 32px; }
   :root[data-skin="retro"] .plan[data-layout="night"] .pslot { height: 84px; padding-left: 14px; }
 }
+.spk-name { flex-wrap: wrap; }
+.spk-arr { flex-basis: 100%; padding-left: 22px; color: var(--muted); font-size: 11.5px; }

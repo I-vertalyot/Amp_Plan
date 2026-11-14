@@ -1036,6 +1036,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
   .pn-ip { font-size: 32px; }
   :root[data-skin="retro"] .plan[data-layout="night"] .pslot { height: 84px; padding-left: 14px; }
 }
+.spk-name { flex-wrap: wrap; }
+.spk-arr { flex-basis: 100%; padding-left: 22px; color: var(--muted); font-size: 11.5px; }
 
 </style>
 </head>
@@ -1532,8 +1534,25 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     }
     return { placed, created };
   }
+  // Line arrays that always end with a different bottom box: an L2 hang is L2 modules with one L2D at
+  // the bottom, however long it is. The group stays "L2"; its last amp runs the L2D preset.
+  const ARRAY_BOTTOM = { L2: 'L2D' };
+  function arrayBottomAmp(v, g) {
+    if (!ARRAY_BOTTOM[g.model]) return null;
+    const linked = v.devices.filter((x) => x.drives === g.id);
+    return linked.length ? linked[linked.length - 1] : null;
+  }
+  // "3 × L2 + 1 × L2D" for an L2 hang of 4, "12 × K2" otherwise
+  function arrayText(g) {
+    const bot = ARRAY_BOTTOM[g.model];
+    if (!bot) return g.qty + ' × ' + speakerLabel(g);
+    return g.qty > 1 ? (g.qty - 1) + ' × ' + g.model + ' + 1 × ' + bot : '1 × ' + bot;
+  }
   function presetOf(v, d) {
-    if (d.drives) { const g = (v.speakers || []).find((x) => x.id === d.drives); if (g) return speakerLabel(g); }
+    if (d.drives) {
+      const g = (v.speakers || []).find((x) => x.id === d.drives);
+      if (g) return ARRAY_BOTTOM[g.model] && arrayBottomAmp(v, g) === d ? ARRAY_BOTTOM[g.model] : speakerLabel(g);
+    }
     return d.preset || '';
   }
   // What a rack slot shows: "K2 - 11" (preset and the last number of the IP).
@@ -2358,7 +2377,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
   }
 
   const api = {
-    SCHEMA, MAX_HOST, MAX_DEVICES, SAFE_ID, STATUSES, STATUS_LABEL, GROUPS, MODELS, MODEL_MAP, RACKS, RACK_MAP, DEFAULT_ZONES, ZONE_HEX, LA_RANGES, FD_UNIT, FD_LS10,
+    ARRAY_BOTTOM, arrayText, arrayBottomAmp, SCHEMA, MAX_HOST, MAX_DEVICES, SAFE_ID, STATUSES, STATUS_LABEL, GROUPS, MODELS, MODEL_MAP, RACKS, RACK_MAP, DEFAULT_ZONES, ZONE_HEX, LA_RANGES, FD_UNIT, FD_LS10,
     parseIp, ipToStr, size, netOf, maskStr, host, blockOf, blockLabel, inNet, laRange, clampInt,
     modelOf, uid, escHtml, stableStringify, newDevice, sanitizeVenue, serialize, makeVenue, cloneVenue, rackDevices,
     netInfo, devNets, worst, analyze, zoneBlocks, planAutoAssign, applyChanges, rebase,
@@ -3100,7 +3119,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
       const off = x.linked !== x.need;
       return '<tr data-spk="' + esc(g.id) + '">' +
         '<td><select class="cell" id="z-' + esc(g.id) + '" data-sf="zone" aria-label="Zone of ' + esc(x.label) + '"' + ro + '>' + zoneOptions(v, g.zone) + '</select></td>' +
-        '<td><div class="spk-name"><span class="sw" style="background:var(--z' + colorOf.get(x.label + '|' + g.amp) + ')"></span><b>' + esc(x.label) + '</b></div></td>' +
+        '<td><div class="spk-name"><span class="sw" style="background:var(--z' + colorOf.get(x.label + '|' + g.amp) + ')"></span><b>' + esc(x.label) + '</b>' + (C.ARRAY_BOTTOM[g.model] ? '<small class="spk-arr">Hang: ' + esc(C.arrayText(g)) + '</small>' : '') + '</div></td>' +
         '<td>' + qtyStepper(g) + '</td>' +
         '<td><select class="cell" id="a-' + esc(g.id) + '" data-sf="amp" aria-label="Amplifier for ' + esc(x.label) + '"' + ro + '>' + ampOpts + '</select></td>' +
         '<td><div class="per"><input class="cell num-in" id="p-' + esc(g.id) + '" type="number" min="1" max="' + (custom ? 64 : x.max) + '" inputmode="numeric" data-sf="per" value="' + x.per + '" aria-label="' + esc(x.label) + ' per amp"' + ro + '>' +
@@ -3178,8 +3197,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
           $('#sp-per-hint', m).textContent = C.SPEAKER_MAP[g.model]
             ? 'L-Acoustics maximum: ' + C.driveMax(g.model, g.amp) + ' per ' + g.amp + ', ' + C.drivePerOutput(g.model, g.amp) + ' per output. Lower it to leave headroom.'
             : 'Check the speaker’s documentation for how many one amp may drive.';
-          $('#sp-calc', m).innerHTML = '<div class="calc-line"><span class="calc-in">' + g.qty + ' × ' + esc(C.speakerLabel(g)) + '</span><span class="arrow">→</span><span class="calc-out"><b>' + need + '</b> × ' + esc(g.amp) + '</span></div>' +
-            '<div class="calc-sub">' + esc(e ? 'As racks: ' + C.rackText(e, C.rackSizeOf(v, g.amp)) + '.' : need ? 'Not packed in racks.' : '') + ' The amps get IP addresses straight away.</div>';
+          $('#sp-calc', m).innerHTML = '<div class="calc-line"><span class="calc-in">' + esc(C.arrayText(g)) + '</span><span class="arrow">→</span><span class="calc-out"><b>' + need + '</b> × ' + esc(g.amp) + '</span></div>' +
+            '<div class="calc-sub">' + (C.ARRAY_BOTTOM[g.model] ? 'The last box of the hang is always an ' + C.ARRAY_BOTTOM[g.model] + '; its amp gets the ' + C.ARRAY_BOTTOM[g.model] + ' preset. ' : '') + esc(e ? 'As racks: ' + C.rackText(e, C.rackSizeOf(v, g.amp)) + '.' : need ? 'Not packed in racks.' : '') + ' The amps get IP addresses straight away.</div>';
         };
         model.addEventListener('change', () => { fillAmps(); calc(); });
         amp.addEventListener('change', () => { if (C.SPEAKER_MAP[model.value]) { per.max = C.driveMax(model.value, amp.value); per.value = defaultPer(model.value, amp.value); } calc(); });
@@ -3198,7 +3217,7 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
     if (tgt) tgt.qty = Math.min(999, tgt.qty + g.qty);
     else { g.id = C.uid('s'); v.speakers.push(g); tgt = g; }
     S.tab = 'speakers';
-    applySync(v, tgt, 'Added ' + g.qty + ' × ' + C.speakerLabel(g));
+    applySync(v, tgt, 'Added ' + C.arrayText(g));
   }
   function applySync(v, g, lead) {
     const r = C.syncGroup(v, g);

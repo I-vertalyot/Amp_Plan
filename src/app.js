@@ -723,7 +723,7 @@
       const off = x.linked !== x.need;
       return '<tr data-spk="' + esc(g.id) + '">' +
         '<td><select class="cell" id="z-' + esc(g.id) + '" data-sf="zone" aria-label="Zone of ' + esc(x.label) + '"' + ro + '>' + zoneOptions(v, g.zone) + '</select></td>' +
-        '<td><div class="spk-name"><span class="sw" style="background:var(--z' + colorOf.get(x.label + '|' + g.amp) + ')"></span><b>' + esc(x.label) + '</b></div></td>' +
+        '<td><div class="spk-name"><span class="sw" style="background:var(--z' + colorOf.get(x.label + '|' + g.amp) + ')"></span><b>' + esc(x.label) + '</b>' + (C.ARRAY_BOTTOM[g.model] ? '<small class="spk-arr">Hang: ' + esc(C.arrayText(g)) + '</small>' : '') + '</div></td>' +
         '<td>' + qtyStepper(g) + '</td>' +
         '<td><select class="cell" id="a-' + esc(g.id) + '" data-sf="amp" aria-label="Amplifier for ' + esc(x.label) + '"' + ro + '>' + ampOpts + '</select></td>' +
         '<td><div class="per"><input class="cell num-in" id="p-' + esc(g.id) + '" type="number" min="1" max="' + (custom ? 64 : x.max) + '" inputmode="numeric" data-sf="per" value="' + x.per + '" aria-label="' + esc(x.label) + ' per amp"' + ro + '>' +
@@ -801,8 +801,8 @@
           $('#sp-per-hint', m).textContent = C.SPEAKER_MAP[g.model]
             ? 'L-Acoustics maximum: ' + C.driveMax(g.model, g.amp) + ' per ' + g.amp + ', ' + C.drivePerOutput(g.model, g.amp) + ' per output. Lower it to leave headroom.'
             : 'Check the speaker’s documentation for how many one amp may drive.';
-          $('#sp-calc', m).innerHTML = '<div class="calc-line"><span class="calc-in">' + g.qty + ' × ' + esc(C.speakerLabel(g)) + '</span><span class="arrow">→</span><span class="calc-out"><b>' + need + '</b> × ' + esc(g.amp) + '</span></div>' +
-            '<div class="calc-sub">' + esc(e ? 'As racks: ' + C.rackText(e, C.rackSizeOf(v, g.amp)) + '.' : need ? 'Not packed in racks.' : '') + ' The amps get IP addresses straight away.</div>';
+          $('#sp-calc', m).innerHTML = '<div class="calc-line"><span class="calc-in">' + esc(C.arrayText(g)) + '</span><span class="arrow">→</span><span class="calc-out"><b>' + need + '</b> × ' + esc(g.amp) + '</span></div>' +
+            '<div class="calc-sub">' + (C.ARRAY_BOTTOM[g.model] ? 'The last box of the hang is always an ' + C.ARRAY_BOTTOM[g.model] + '; its amp gets the ' + C.ARRAY_BOTTOM[g.model] + ' preset. ' : '') + esc(e ? 'As racks: ' + C.rackText(e, C.rackSizeOf(v, g.amp)) + '.' : need ? 'Not packed in racks.' : '') + ' The amps get IP addresses straight away.</div>';
         };
         model.addEventListener('change', () => { fillAmps(); calc(); });
         amp.addEventListener('change', () => { if (C.SPEAKER_MAP[model.value]) { per.max = C.driveMax(model.value, amp.value); per.value = defaultPer(model.value, amp.value); } calc(); });
@@ -821,7 +821,7 @@
     if (tgt) tgt.qty = Math.min(999, tgt.qty + g.qty);
     else { g.id = C.uid('s'); v.speakers.push(g); tgt = g; }
     S.tab = 'speakers';
-    applySync(v, tgt, 'Added ' + g.qty + ' × ' + C.speakerLabel(g));
+    applySync(v, tgt, 'Added ' + C.arrayText(g));
   }
   function applySync(v, g, lead) {
     const r = C.syncGroup(v, g);

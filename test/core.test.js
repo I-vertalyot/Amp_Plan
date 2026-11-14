@@ -417,4 +417,18 @@ t('amps can have no zone', () => {
   assert.ok(C.planSvg(back).indexOf('<svg') === 0);
 });
 
+t('L2 hang ends with one L2D', () => {
+  const v = C.makeExample();
+  const g = { id: 'gl2', model: 'L2', custom: '', qty: 4, zone: v.zones[0].id, amp: 'LA7.16', per: 0 };
+  v.speakers.push(g);
+  C.syncGroup(v, g);
+  const amps = () => v.devices.filter((d) => d.drives === 'gl2').map((d) => C.presetOf(v, d));
+  assert.deepStrictEqual(amps(), ['L2', 'L2', 'L2', 'L2D']);
+  assert.strictEqual(C.arrayText(g), '3 × L2 + 1 × L2D');
+  g.qty = 7; C.syncGroup(v, g);
+  assert.deepStrictEqual(amps().filter((x) => x === 'L2D').length, 1);
+  assert.strictEqual(amps()[6], 'L2D');
+  assert.strictEqual(C.arrayText({ model: 'K2', qty: 12, custom: '' }), '12 × K2');
+});
+
 console.log('\nall', n, 'tests passed');

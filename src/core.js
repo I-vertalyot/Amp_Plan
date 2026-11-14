@@ -465,8 +465,25 @@
     }
     return { placed, created };
   }
+  // Line arrays that always end with a different bottom box: an L2 hang is L2 modules with one L2D at
+  // the bottom, however long it is. The group stays "L2"; its last amp runs the L2D preset.
+  const ARRAY_BOTTOM = { L2: 'L2D' };
+  function arrayBottomAmp(v, g) {
+    if (!ARRAY_BOTTOM[g.model]) return null;
+    const linked = v.devices.filter((x) => x.drives === g.id);
+    return linked.length ? linked[linked.length - 1] : null;
+  }
+  // "3 × L2 + 1 × L2D" for an L2 hang of 4, "12 × K2" otherwise
+  function arrayText(g) {
+    const bot = ARRAY_BOTTOM[g.model];
+    if (!bot) return g.qty + ' × ' + speakerLabel(g);
+    return g.qty > 1 ? (g.qty - 1) + ' × ' + g.model + ' + 1 × ' + bot : '1 × ' + bot;
+  }
   function presetOf(v, d) {
-    if (d.drives) { const g = (v.speakers || []).find((x) => x.id === d.drives); if (g) return speakerLabel(g); }
+    if (d.drives) {
+      const g = (v.speakers || []).find((x) => x.id === d.drives);
+      if (g) return ARRAY_BOTTOM[g.model] && arrayBottomAmp(v, g) === d ? ARRAY_BOTTOM[g.model] : speakerLabel(g);
+    }
     return d.preset || '';
   }
   // What a rack slot shows: "K2 - 11" (preset and the last number of the IP).
@@ -1291,7 +1308,7 @@
   }
 
   const api = {
-    SCHEMA, MAX_HOST, MAX_DEVICES, SAFE_ID, STATUSES, STATUS_LABEL, GROUPS, MODELS, MODEL_MAP, RACKS, RACK_MAP, DEFAULT_ZONES, ZONE_HEX, LA_RANGES, FD_UNIT, FD_LS10,
+    ARRAY_BOTTOM, arrayText, arrayBottomAmp, SCHEMA, MAX_HOST, MAX_DEVICES, SAFE_ID, STATUSES, STATUS_LABEL, GROUPS, MODELS, MODEL_MAP, RACKS, RACK_MAP, DEFAULT_ZONES, ZONE_HEX, LA_RANGES, FD_UNIT, FD_LS10,
     parseIp, ipToStr, size, netOf, maskStr, host, blockOf, blockLabel, inNet, laRange, clampInt,
     modelOf, uid, escHtml, stableStringify, newDevice, sanitizeVenue, serialize, makeVenue, cloneVenue, rackDevices,
     netInfo, devNets, worst, analyze, zoneBlocks, planAutoAssign, applyChanges, rebase,
