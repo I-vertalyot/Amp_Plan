@@ -98,7 +98,8 @@
 
   const DEFAULT_ZONES = ['Main L', 'Main R', 'Subs', 'Front fill', 'Out fill', 'Delays', 'Monitors', 'Control'];
   const DEFAULT_ZONE_COLORS = [0, 1, 3, 4, 5, 6, 2, 8];
-  const SIDES = ['L', 'C', 'R'];
+  // two sides of the stage; older plans with a Center side are moved onto these when loaded
+  const SIDES = ['L', 'R'];
   const SIDE_LABEL = { L: 'Left', C: 'Center', R: 'Right' };
   const RACK_MODEL = { 'LA-RAK II AVB': 'LA12X', 'LA-RAK II': 'LA12X', 'LA-RAK III': 'LA7.16', 'LA-RAK': 'LA8' };
   const DEFAULT_RACK_TYPE = { LA12X: 'LA-RAK II AVB', 'LA7.16': 'LA-RAK III', LA8: 'LA-RAK' };
@@ -109,8 +110,10 @@
     const R = ['r', 'right', 'sr', 'pravá', 'prava', 'pravý', 'pravy', 'vpravo'];
     if (words.some((w) => L.indexOf(w) >= 0)) return 'L';
     if (words.some((w) => R.indexOf(w) >= 0)) return 'R';
-    return 'C';
+    return '';
   }
+  // a side for a zone whose name doesn't say: alternate Left / Right so both sides fill up
+  function sideFor(name, k) { return inferSide(name) || (k % 2 ? 'R' : 'L'); }
 
 
   // Enclosure drive capacity per amplified controller, as [per output, per amp].
@@ -188,15 +191,16 @@
     const a = n.assign && typeof n.assign === 'object' ? n.assign : {};
     const zones = [];
     const zids = new Set();
+    let unnamed = 0;
     for (const z of Array.isArray(raw.zones) ? raw.zones.slice(0, 40) : []) {
       if (!z || typeof z !== 'object') continue;
       let zid = str(z.id, 40);
       if (!SAFE_ID.test(zid) || zids.has(zid)) zid = uid('z');
       zids.add(zid);
       const zname = str(z.name, 60) || 'Zone';
-      zones.push({ id: zid, name: zname, color: clampInt(z.color, 0, 8, Math.min(zones.length, 8)), side: SIDES.indexOf(z.side) >= 0 ? z.side : inferSide(zname) });
+      zones.push({ id: zid, name: zname, color: clampInt(z.color, 0, 8, Math.min(zones.length, 8)), side: SIDES.indexOf(z.side) >= 0 ? z.side : inferSide(zname) || (unnamed++ % 2 ? 'R' : 'L') });
     }
-    if (!zones.length) { zones.push({ id: 'z1', name: 'Main', color: 0, side: 'C' }); zids.add('z1'); }
+    if (!zones.length) { zones.push({ id: 'z1', name: 'Main', color: 0, side: 'L' }); zids.add('z1'); }
     const zoneSide = new Map(zones.map((z) => [z.id, z.side]));
     const racks = [];
     const rids = new Set();
@@ -205,7 +209,7 @@
       let rid = str(r.id, 40);
       if (!SAFE_ID.test(rid) || rids.has(rid)) rid = uid('r');
       rids.add(rid);
-      racks.push({ id: rid, name: str(r.name, 40) || 'Rack', side: SIDES.indexOf(r.side) >= 0 ? r.side : 'C', size: clampInt(r.size, 1, 8, 3), type: RACK_MAP[r.type] ? r.type : '' });
+      racks.push({ id: rid, name: str(r.name, 40) || 'Rack', side: SIDES.indexOf(r.side) >= 0 ? r.side : '',  size: clampInt(r.size, 1, 8, 3), type: RACK_MAP[r.type] ? r.type : '' });
     }
     const legacy = new Map();
     const speakers = sanitizeSpeakers(raw.speakers, zids, zones[0].id);
@@ -225,7 +229,7 @@
       if (dev.rack && !rids.has(dev.rack)) {
         // older plans stored the rack name on each device: turn it into a rack
         if (!legacy.has(dev.rack) && racks.length < 120) {
-          const r = { id: uid('r'), name: dev.rack.slice(0, 40), side: zoneSide.get(dev.zone) || 'C', size: 3, type: RACK_MAP[d.rackType] ? d.rackType : '', legacy: true };
+          const r = { id: uid('r'), name: dev.rack.slice(0, 40), side: zoneSide.get(dev.zone) || 'L', size: 3, type: RACK_MAP[d.rackType] ? d.rackType : '', legacy: true };
           racks.push(r);
           rids.add(r.id);
           legacy.set(dev.rack, r.id);
@@ -237,6 +241,13 @@
     }
     for (const r of racks) {
       const inside = devices.filter((d) => d.rack === r.id && MODEL_MAP[d.model].group === 'amp');
+      if (!r.side) {
+        // a rack that stood in the old Center column goes to its amps' side, else to the side with fewer racks
+        const zs = inside.map((d) => zoneSide.get(d.zone)).filter(Boolean);
+        const nl = racks.filter((x) => x.side === 'L').length;
+        const nr = racks.filter((x) => x.side === 'R').length;
+        r.side = zs.length ? zs[0] : nl <= nr ? 'L' : 'R';
+      }
       if (r.legacy) { r.size = Math.min(8, Math.max(r.size, inside.length)); delete r.legacy; }
       const used = new Set();
       const later = [];
@@ -318,7 +329,7 @@
         dhcpFrom: v.net.dhcpFrom, dhcpTo: v.net.dhcpTo, redundancy: !!v.net.redundancy,
         assign: { scheme: v.net.assign.scheme, start: v.net.assign.start, size: v.net.assign.size, avoidDefaults: !!v.net.assign.avoidDefaults },
       },
-      zones: v.zones.map((z) => ({ id: z.id, name: z.name, color: z.color, side: z.side || 'C' })),
+      zones: v.zones.map((z) => ({ id: z.id, name: z.name, color: z.color, side: z.side || 'L' })),
       racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '' })),
       speakers: (v.speakers || []).map((g) => ({ id: g.id, model: g.model, custom: g.custom || '', qty: g.qty, zone: g.zone, amp: g.amp, per: g.per || 0 })),
       devices: v.devices.map((d) => ({
@@ -382,7 +393,7 @@
   }
   function addRack(v, o) {
     o = o || {};
-    const r = { id: uid('r'), name: str(o.name, 40) || nextRackName(v), side: SIDES.indexOf(o.side) >= 0 ? o.side : 'C', size: clampInt(o.size, 1, 8, 3), type: RACK_MAP[o.type] ? o.type : '' };
+    const r = { id: uid('r'), name: str(o.name, 40) || nextRackName(v), side: SIDES.indexOf(o.side) >= 0 ? o.side : 'L', size: clampInt(o.size, 1, 8, 3), type: RACK_MAP[o.type] ? o.type : '' };
     if (!v.racks) v.racks = [];
     v.racks.push(r);
     return r;
@@ -391,7 +402,7 @@
     const spec = RACK_MAP[type];
     if (!spec) return null;
     const z = v.zones.find((x) => x.id === zoneId);
-    const r = addRack(v, { name, side: z ? z.side : 'C', size: spec.amps.length, type });
+    const r = addRack(v, { name, side: z ? z.side : 'L', size: spec.amps.length, type });
     const devs = rackDevices(type, r.name, zoneId, opts);
     let k = 0;
     for (const d of devs) { d.rack = r.id; d.slot = isAmpModel(d.model) ? k++ : -1; }
@@ -432,7 +443,7 @@
     opts = opts || {};
     const only = opts.onlyIds ? new Set(opts.onlyIds) : null;
     const zi = new Map(v.zones.map((z, i) => [z.id, i]));
-    const sideOf = (d) => { const z = v.zones.find((x) => x.id === d.zone); return z ? z.side : 'C'; };
+    const sideOf = (d) => { const z = v.zones.find((x) => x.id === d.zone); return z ? z.side : 'L'; };
     const loose = v.devices.map((d, i) => ({ d, i }))
       .filter((x) => isAmpModel(x.d.model) && !rackById(v, x.d.rack) && (!only || only.has(x.d.id)))
       .sort((a, b) => ((zi.has(a.d.zone) ? zi.get(a.d.zone) : 99) - (zi.has(b.d.zone) ? zi.get(b.d.zone) : 99)) || a.i - b.i)
@@ -1316,7 +1327,7 @@
     DEFAULT_RACK_SIZE, RACK_FOR, rackSizeOf, rackEquivalent, rackText, countPlan, rackSummary, equipmentLine,
     SPEAKERS, SPEAKER_MAP, SPEAKER_SERIES, DRIVE_AMPS, AMP_IDS, driveOptions, driveMax, drivePerOutput, speakerLabel, perAmp, ampsNeeded,
     nextIndex, syncGroup, removeGroup, speakerPlan,
-    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, isAmpModel, rackById, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
+    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;

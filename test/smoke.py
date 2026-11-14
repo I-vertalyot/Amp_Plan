@@ -139,7 +139,7 @@ def run(p, label, mock, dark=False):
     print(label, 'after undo right rack:', right_txt())
     # drag the second Left K2 rack's amp into an empty slot of rack 1? rack 1 is full: drag into rack 2's empty slot
     src = page.locator('.pside-L .prack').first.locator('.pslot[data-dev]').nth(2)
-    dst = page.locator('.pside-L .prack').nth(1).locator('.pslot.p-empty').first
+    dst = page.locator('.pside-L .prack:not(.psingle) .pslot.p-empty').first
     vp = page.viewport_size
     page.set_viewport_size({'width': vp['width'], 'height': 1600})  # both racks on screen for the drag
     src.drag_to(dst)

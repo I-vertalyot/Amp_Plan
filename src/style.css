@@ -1028,3 +1028,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 }
 .spk-name { flex-wrap: wrap; }
 .spk-arr { flex-basis: 100%; padding-left: 22px; color: var(--muted); font-size: 11.5px; }
+
+/* two sides only: Left and Right */
+.pstage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.plan[data-layout="stage"] .pstage { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "L deck R" "foh foh foh"; }
+@media (max-width: 900px) { .pstage { grid-template-columns: 1fr; } .plan[data-layout="stage"] .pstage { grid-template-columns: 1fr; grid-template-areas: "deck" "L" "R" "foh"; } }

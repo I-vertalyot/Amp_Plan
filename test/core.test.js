@@ -340,9 +340,8 @@ t('racks: layout, swap, pack, resize, legacy names, labels', () => {
   const v = C.makeExample();
   const info = C.netInfo(v);
   assert.strictEqual(v.racks.length, 7);
-  assert.deepStrictEqual(v.racks.map((r) => r.side).join(''), 'LLRRCCC');
-  const r6 = v.racks[5];
-  assert.deepStrictEqual(C.rackSlots(v, r6).map((d) => C.slotLabel(v, d, info)), ['KS28 - 34', 'Kara II - 51', 'Kara II - 52']);
+  assert.deepStrictEqual(v.racks.map((r) => r.side).join(''), 'LLRRLRL');
+  assert.deepStrictEqual(C.rackSlots(v, v.racks[4]).map((d) => C.slotLabel(v, d, info)), ['KS28 - 33', 'KS28 - 34', 'Kara II - 51']);
   const spare = v.devices.find((d) => d.name === 'Spare');
   assert.strictEqual(spare.rack, '');
   assert.strictEqual(C.slotLabel(v, spare, info), 'LA12X');
@@ -353,23 +352,22 @@ t('racks: layout, swap, pack, resize, legacy names, labels', () => {
   assert.strictEqual(C.rackSlots(v, v.racks[2])[1], a1);
   assert.strictEqual(C.rackSlots(v, v.racks[0])[0], b1);
   // drop on an empty slot, then take it out of the rack
-  C.placeDevice(v, a1.id, v.racks[1].id, 2);
+  C.placeDevice(v, a1.id, v.racks[3].id, 2);
   assert.strictEqual(C.rackSlots(v, v.racks[2])[1], null);
   C.placeDevice(v, a1.id, '', -1);
   assert.strictEqual(a1.rack, '');
-  // pack puts the spare and a1 back on the right side: spare zone Delays (center), a1 zone Main L (left)
+  // pack puts the spare (zone Delays, left) and a1 (Main L) into free left LA12X slots
   const res = C.packRacks(v);
   assert.strictEqual(res.placed, 2);
-  assert.strictEqual(res.created.length, 1, 'center LA12X racks are full and RAK 7 holds an LA4X, so the spare gets a new rack');
-  assert.strictEqual(res.created[0].name, 'RAK 8');
+  assert.strictEqual(res.created.length, 0);
   assert.strictEqual(C.rackById(v, a1.rack).side, 'L');
-  assert.strictEqual(C.rackById(v, spare.rack).side, 'C');
+  assert.strictEqual(C.rackById(v, spare.rack).side, 'L');
   // resize pushes amps out, remove empties a rack
   const out = C.resizeRack(v, v.racks[0], 1);
   assert.ok(out.length >= 1);
   const gone = C.removeRack(v, v.racks[4].id);
   assert.strictEqual(gone.length, 3);
-  assert.strictEqual(v.racks.length, 7);
+  assert.strictEqual(v.racks.length, 6);
   // a linked amp changing model leaves a rack that can't hold it
   const g = v.speakers[0];
   g.amp = 'LA7.16';
@@ -382,7 +380,7 @@ t('racks: layout, swap, pack, resize, legacy names, labels', () => {
   assert.strictEqual(C.slotLabel(v, amp, info), 'KS28 - 39');
   assert.ok((C.analyze(v).byDev.get(amp.id) || []).some((x) => x.code === 'preset-amp'));
   // side from zone names, English and Czech
-  assert.deepStrictEqual(['Main L', 'Out R', 'Left hang', 'Levá strana', 'Subs', 'FF'].map(C.inferSide), ['L', 'R', 'L', 'L', 'C', 'C']);
+  assert.deepStrictEqual(['Main L', 'Out R', 'Left hang', 'Levá strana', 'Subs', 'FF'].map(C.inferSide), ['L', 'R', 'L', 'L', '', '']);
   // older documents with a rack name per device become racks
   const legacyBody = C.serialize(C.makeVenue());
   legacyBody.devices = [

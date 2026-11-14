@@ -954,7 +954,7 @@
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
     const head = '<div class="plan-head"><div class="plan-title" aria-hidden="true"><span class="pt-amp">AMP</span><span class="pt-plan">PLAN</span></div><p class="plan-sub">' + esc(sub) + '</p>' + legend + '</div>';
     // amps outside the racks sit on their zone's side of the stage, after that side's racks
-    const sideOfAmp = (d) => { const z = v.zones.find((x) => x.id === d.zone); return z && C.SIDES.indexOf(z.side) >= 0 ? z.side : 'C'; };
+    const sideOfAmp = (d) => { const z = v.zones.find((x) => x.id === d.zone); return z && C.SIDES.indexOf(z.side) >= 0 ? z.side : 'L'; };
     const sides = C.SIDES.map((sd) => {
       const list = racks.filter((r) => r.side === sd);
       const singles = loose.filter((d) => sideOfAmp(d) === sd);
@@ -1536,7 +1536,7 @@
       const r = C.addRack(v, { side: t.dataset.side, size: 3 });
       touch(v);
       render();
-      toast('Added ' + r.name + (r.side === 'C' ? ' in the center' : ' on the ' + C.SIDE_LABEL[r.side].toLowerCase()) + '. Click its name to change type or slots.', undoAction());
+      toast('Added ' + r.name + ' on the ' + C.SIDE_LABEL[r.side].toLowerCase() + '. Click its name to change type or slots.', undoAction());
     },
     'rack-edit': (t) => openRackEditor(t.dataset.rack),
     'rack-del': (t) => {
@@ -2372,7 +2372,7 @@
       actions: [
         { label: 'Cancel' },
         { label: 'Save zones', kind: 'primary', onClick: () => {
-          work.forEach((z) => { z.name = String(z.name || '').trim() || 'Zone'; delete z.sideSet; if (C.SIDES.indexOf(z.side) < 0) z.side = C.inferSide(z.name); });
+          work.forEach((z) => { z.name = String(z.name || '').trim() || 'Zone'; delete z.sideSet; if (C.SIDES.indexOf(z.side) < 0) z.side = C.sideFor(z.name, 0); });
           const ids = new Set(work.map((z) => z.id));
           pushUndo(v, 'zones');
           v.devices.forEach((d) => { if (d.zone && !ids.has(d.zone)) d.zone = work[0].id; });
@@ -2390,7 +2390,7 @@
           const i = line ? +line.dataset.i : -1;
           if (e.target.closest('#ze-add')) {
             if (work.length >= 40) return;
-            work.push({ id: C.uid('z'), name: 'Zone ' + (work.length + 1), color: Math.min(work.length, 8), side: 'C' });
+            work.push({ id: C.uid('z'), name: 'Zone ' + (work.length + 1), color: Math.min(work.length, 8), side: C.sideFor('', work.length) });
             draw(m);
             const inputs = $$('[data-zname]', m);
             if (inputs.length) { inputs[inputs.length - 1].focus(); inputs[inputs.length - 1].select(); }
@@ -2415,7 +2415,8 @@
           if (!inp) return;
           const z = work[+inp.closest('.zone-line').dataset.i];
           z.name = inp.value;
-          if (!z.sideSet) { z.side = C.inferSide(inp.value); const sel = inp.parentElement.querySelector('[data-zside]'); if (sel) sel.value = z.side; }
+          const guess = C.inferSide(inp.value);
+          if (!z.sideSet && guess) { z.side = guess; const sel = inp.parentElement.querySelector('[data-zside]'); if (sel) sel.value = z.side; }
         });
         m.addEventListener('change', (e) => {
           const sel = e.target.closest('[data-zside]');
