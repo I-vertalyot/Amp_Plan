@@ -2995,6 +2995,12 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     if (!isWebsite() || isStandalone()) return '';
     if (installEvt) return '<button class="btn install-btn" data-act="install-app">Install app on this device</button>';
     if (isIOS()) return '<p class="install-hint">To install on iPhone or iPad: tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>';
+    // the browser hasn't offered the install yet (it waits a little, or the app is already installed): say where its own menu has it
+    const ua = navigator.userAgent;
+    if (/Edg\//.test(ua)) return '<p class="install-hint">To install: Edge menu <b>…</b> → <b>Apps</b> → <b>Install this site as an app</b>.</p>';
+    if (/Chrome\//.test(ua) && /Android/.test(ua)) return '<p class="install-hint">To install: Chrome menu <b>⋮</b> → <b>Add to Home screen</b> → <b>Install</b>.</p>';
+    if (/Chrome\//.test(ua)) return '<p class="install-hint">To install: click the install icon at the right end of the address bar, or Chrome menu <b>⋮</b> → <b>Cast, save and share</b> → <b>Install page as app…</b></p>';
+    if (/Safari\//.test(ua) && /Macintosh/.test(ua)) return '<p class="install-hint">To install: Safari menu <b>File</b> → <b>Add to Dock…</b></p>';
     return '';
   }
   async function installApp() {
