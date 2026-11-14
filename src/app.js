@@ -324,6 +324,29 @@
     renderRail();
     renderWork();
   }
+  // ---- installing on a phone or computer (website version only; claude.ai has its own wrapper)
+  const isWebsite = () => (location.protocol === 'https:' || location.hostname === 'localhost') && !/claude\.ai$|anthropic|claudeusercontent/.test(location.hostname);
+  const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let installEvt = null;
+  if (isWebsite() && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (!cur()) renderRail(); });
+  window.addEventListener('appinstalled', () => { installEvt = null; toast('Amp Plan is installed. Open it from your home screen.'); if (!cur()) renderRail(); });
+  function installHtml() {
+    if (!isWebsite() || isStandalone()) return '';
+    if (installEvt) return '<button class="btn install-btn" data-act="install-app">Install app on this device</button>';
+    if (isIOS()) return '<p class="install-hint">To install on iPhone or iPad: tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>';
+    return '';
+  }
+  async function installApp() {
+    if (!installEvt) return;
+    const e = installEvt;
+    installEvt = null;
+    try { e.prompt(); await e.userChoice; } catch (x) { /* dismissed */ }
+    renderRail();
+  }
   function goHome() {
     S.cur = '';
     document.body.classList.remove('rail-open');
@@ -343,6 +366,8 @@
     else if (!list.length) box.innerHTML = '<p class="venue-group">No venue matches</p>';
     else box.innerHTML = groupVenues(list).map((g) => '<p class="venue-group">' + esc(g.label) + '</p><ul class="venue-list">' + g.list.map(venueItem).join('') + '</ul>').join('');
     box.scrollTop = top;
+    const inst = $('#install-slot');
+    if (inst) inst.innerHTML = installHtml();
     setSaveStatus();
   }
   function venueItem(v) {
@@ -1927,6 +1952,7 @@
     'copy-scan': () => { const v = cur(); const s = v && analysis(v).stats; if (s && s.scanFrom != null) copyText(ip(s.scanFrom) + ' - ' + ip(s.scanTo), 'Scan range copied.'); },
     'rail-open': () => document.body.classList.add('rail-open'),
     'go-home': () => goHome(),
+    'install-app': () => installApp(),
     'rail-close': () => document.body.classList.remove('rail-open'),
     'local-mode': () => startLocal('Working in this browser only, because your saved plans weren’t reachable. Export a backup before you close the page.'),
   };

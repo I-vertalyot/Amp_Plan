@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Amp Plan</title>
+<meta name="theme-color" content="#8b969c">
+<meta name="description" content="IP and rack planner for L-Acoustics amplified controllers, venue by venue.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Amp Plan">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -1151,6 +1160,12 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .pcell-in > .prack { width: 128px; height: 100%; }
 .pcell-in > .prack > .prack-box { height: 100%; box-sizing: border-box; }
 
+/* install on this device (website version) */
+.install-slot:empty { display: none; }
+.install-slot { padding: 0 16px 10px; }
+.install-btn { width: 100%; height: 44px; font-weight: 700; background: var(--orange, #fca311) !important; color: #000 !important; }
+.install-hint { margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.4; background: rgba(0, 0, 0, .14); border-radius: 3px; }
+
 </style>
 </head>
 <body>
@@ -1165,6 +1180,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       <button class="btn" data-act="import">Import</button>
     </div>
     <div class="rail-search"><label class="sr-only" for="venue-q">Search venues</label><input id="venue-q" type="search" placeholder="Search venues" autocomplete="off"></div>
+    <div id="install-slot" class="install-slot"></div>
     <div class="venue-scroll" id="venue-scroll"></div>
     <div class="rail-foot" id="store-status" role="status"><span class="dot busy"></span><span>Opening saved plans…</span></div>
   </aside>
@@ -2965,6 +2981,29 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     renderRail();
     renderWork();
   }
+  // ---- installing on a phone or computer (website version only; claude.ai has its own wrapper)
+  const isWebsite = () => (location.protocol === 'https:' || location.hostname === 'localhost') && !/claude\.ai$|anthropic|claudeusercontent/.test(location.hostname);
+  const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let installEvt = null;
+  if (isWebsite() && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (!cur()) renderRail(); });
+  window.addEventListener('appinstalled', () => { installEvt = null; toast('Amp Plan is installed. Open it from your home screen.'); if (!cur()) renderRail(); });
+  function installHtml() {
+    if (!isWebsite() || isStandalone()) return '';
+    if (installEvt) return '<button class="btn install-btn" data-act="install-app">Install app on this device</button>';
+    if (isIOS()) return '<p class="install-hint">To install on iPhone or iPad: tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>';
+    return '';
+  }
+  async function installApp() {
+    if (!installEvt) return;
+    const e = installEvt;
+    installEvt = null;
+    try { e.prompt(); await e.userChoice; } catch (x) { /* dismissed */ }
+    renderRail();
+  }
   function goHome() {
     S.cur = '';
     document.body.classList.remove('rail-open');
@@ -2984,6 +3023,8 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     else if (!list.length) box.innerHTML = '<p class="venue-group">No venue matches</p>';
     else box.innerHTML = groupVenues(list).map((g) => '<p class="venue-group">' + esc(g.label) + '</p><ul class="venue-list">' + g.list.map(venueItem).join('') + '</ul>').join('');
     box.scrollTop = top;
+    const inst = $('#install-slot');
+    if (inst) inst.innerHTML = installHtml();
     setSaveStatus();
   }
   function venueItem(v) {
@@ -4568,6 +4609,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     'copy-scan': () => { const v = cur(); const s = v && analysis(v).stats; if (s && s.scanFrom != null) copyText(ip(s.scanFrom) + ' - ' + ip(s.scanTo), 'Scan range copied.'); },
     'rail-open': () => document.body.classList.add('rail-open'),
     'go-home': () => goHome(),
+    'install-app': () => installApp(),
     'rail-close': () => document.body.classList.remove('rail-open'),
     'local-mode': () => startLocal('Working in this browser only, because your saved plans weren’t reachable. Export a backup before you close the page.'),
   };

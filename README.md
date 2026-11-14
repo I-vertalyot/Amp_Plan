@@ -26,3 +26,11 @@ python3 build.py
 open dist/index.html
 ```
 Opened as a plain file, plans are kept in the browser's local storage. In the Claude artifact they are kept in the artifact's database.
+
+## Install on a phone or computer
+Open https://i-vertalyot.github.io/Amp_Plan/ and install it:
+- **Android (Chrome):** tap **Install app on this device** on the home page, or menu ⋮ → **Install app**.
+- **iPhone / iPad (Safari):** **Share** → **Add to Home Screen**.
+- **Computer (Chrome / Edge):** the install icon in the address bar, or the **Install app on this device** button.
+
+Once installed it opens full-screen with its own icon and works without internet. Plans are kept on that device; use Export → Backup / Import to move them.

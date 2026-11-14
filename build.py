@@ -8,3 +8,9 @@ for key, f in (('/*__CSS__*/', 'src/style.css'), ('/*__CORE__*/', 'src/core.js')
 out = root / 'dist/index.html'
 out.write_text(t)
 print(out, len(t.encode()), 'bytes')
+
+# website extras for installing as an app: manifest, offline worker, icons (copied next to index.html)
+import shutil
+for f in ('manifest.webmanifest', 'sw.js'):
+    shutil.copy(root / 'pwa' / f, root / 'dist' / f)
+shutil.copytree(root / 'pwa/icons', root / 'dist/icons', dirs_exist_ok=True)

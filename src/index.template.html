@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Amp Plan</title>
+<meta name="theme-color" content="#8b969c">
+<meta name="description" content="IP and rack planner for L-Acoustics amplified controllers, venue by venue.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Amp Plan">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -23,6 +32,7 @@
       <button class="btn" data-act="import">Import</button>
     </div>
     <div class="rail-search"><label class="sr-only" for="venue-q">Search venues</label><input id="venue-q" type="search" placeholder="Search venues" autocomplete="off"></div>
+    <div id="install-slot" class="install-slot"></div>
     <div class="venue-scroll" id="venue-scroll"></div>
     <div class="rail-foot" id="store-status" role="status"><span class="dot busy"></span><span>Opening saved plans…</span></div>
   </aside>
