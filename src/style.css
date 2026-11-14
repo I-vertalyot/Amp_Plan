@@ -886,3 +886,8 @@ textarea.copybox { width: 100%; min-height: 220px; font: 12px/1.4 var(--font-mon
 .prack:hover .prack-del, .prack-del:focus-visible { opacity: 1; }
 .prack-del:hover { background: #c8372a; color: #fff; border-color: #7a1d14; }
 @media (hover: none) { .prack-del { opacity: 1; } }
+
+/* single amps in "Not in a rack": one-amp cases like the racks */
+.ptray-items .psingle .pslot { min-width: 0; padding: 0 5px; }
+.prack-name.is-static { cursor: default; }
+.prack-name.is-static span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }

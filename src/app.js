@@ -913,6 +913,11 @@
     return '<div class="prack">' + del + '<div class="prack-box" style="--n:' + r.size + '"><button type="button" class="prack-name" data-act="rack-edit" data-rack="' + esc(r.id) + '"' + (ro ? ' disabled' : '') + ' title="' + esc((r.type || 'Custom rack') + (ro ? '' : ' · click to edit')) + '"><span>' + esc(r.name) + '</span>' + (r.type ? '<small>' + esc(r.type) + '</small>' : '') + '</button>' +
       inner + foot + '</div></div>';
   }
+  // an amp outside the racks, drawn as its own one-amp case
+  function singleHtml(v, a, d) {
+    const m = C.modelOf(d.model).label;
+    return '<div class="prack psingle"><div class="prack-box" style="--n:1"><div class="prack-name is-static" title="' + esc(m) + '"><span>' + esc((d.name || m).slice(0, 18)) + '</span><small>' + esc(m) + '</small></div>' + ampChip(v, a, d, '') + '</div></div>';
+  }
   function planHtml(v, a) {
     const ro = S.readOnly;
     const racks = v.racks || [];
@@ -933,7 +938,7 @@
     const tray = '<section class="ptray" aria-label="Amps not in a rack"><div class="ptray-head"><b>Not in a rack</b><span class="muted">' + esc(C.plural(loose.length, 'amp')) + '</span><span class="ptray-actions">' +
       (!ro && loose.length ? '<button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button>' : '') +
       (ro ? '' : '<button type="button" class="btn" data-act="amp-new" data-loose="1">+ Amp without rack</button>') + '</span></div>' +
-      '<div class="ptray-items">' + (loose.length ? loose.map((d) => ampChip(v, a, d, '')).join('')
+      '<div class="ptray-items">' + (loose.length ? loose.map((d) => singleHtml(v, a, d)).join('')
         : '<span class="muted">' + (amps.length ? 'Every amp is in a rack. Drag one here to take it out.' : 'No amps yet. Add speakers on the Speakers & amps tab, or add a rack and fill its slots.') + '</span>') + '</div></section>';
     const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag amps between slots to rearrange them.</p>';
     const callout = !ro && !racks.length && loose.length

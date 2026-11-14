@@ -1268,15 +1268,23 @@
     }
     const loose = v.devices.filter((d) => isAmpModel(d.model) && !rackById(v, d.rack));
     if (loose.length) {
-      const labels = loose.map((d) => {
-        const l = slotLabel(v, d, info);
-        return d.name && l === modelOf(d.model).label ? l + ' (' + d.name + ')' : l;
-      });
+      // each loose amp drawn as its own one-amp case, same look as the racks
       out += '<text x="40" y="' + (maxY + 24) + '" font-family="' + SANS + '" font-size="13" font-weight="700" fill="#111">Not in a rack</text>';
-      for (let k = 0; k < labels.length; k += 8) {
-        out += '<text x="40" y="' + (maxY + 46 + (k / 8) * 20) + '" font-family="' + SANS + '" font-size="13" fill="#44535a">' + e(labels.slice(k, k + 8).join('   ·   ')) + '</text>';
-      }
-      maxY += 46 + Math.ceil(labels.length / 8) * 20;
+      const SW = 132;
+      const SH = 30 + 30 + 2;
+      const perRow = Math.floor((W - 80 + 12) / (SW + 12));
+      loose.forEach((d, k) => {
+        const x = 40 + (k % perRow) * (SW + 12);
+        const by = maxY + 38 + Math.floor(k / perRow) * (SH + 12);
+        const z = zmap.get(d.zone);
+        const c = z ? z.color : 8;
+        out += '<rect x="' + x + '" y="' + by + '" width="' + SW + '" height="' + SH + '" rx="7" fill="#000"/>';
+        out += '<text x="' + (x + SW / 2) + '" y="' + (by + 14) + '" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="10" font-weight="700" letter-spacing="0.8" fill="#8fa3ab">' + e((d.name || modelOf(d.model).label).toUpperCase().slice(0, 18)) + '</text>';
+        out += '<text x="' + (x + SW / 2) + '" y="' + (by + 25) + '" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="8.5" fill="#5f7178">' + e(modelOf(d.model).label) + '</text>';
+        out += '<rect x="' + (x + 6) + '" y="' + (by + 30) + '" width="' + (SW - 12) + '" height="26" rx="3" fill="' + ZONE_HEX[c] + '"/>';
+        out += '<text x="' + (x + SW / 2) + '" y="' + (by + 48) + '" text-anchor="middle" font-family="' + SANS + '" font-size="13" font-weight="700" fill="' + (c === 3 ? '#0b0b0b' : '#fff') + '">' + e(slotLabel(v, d, info)) + '</text>';
+      });
+      maxY += 38 + Math.ceil(loose.length / perRow) * (SH + 12);
     }
     const H = Math.ceil(maxY + 30);
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><rect width="' + W + '" height="' + H + '" fill="#fff"/>' + out + '</svg>';
