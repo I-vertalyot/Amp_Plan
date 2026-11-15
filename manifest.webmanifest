@@ -2,7 +2,7 @@
   "name": "Amp Plan",
   "short_name": "Amp Plan",
   "description": "IP and rack planner for L-Acoustics amplified controllers, venue by venue.",
-  "id": "./",
+  "id": "/Amp_Plan/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -10,9 +10,44 @@
   "background_color": "#c9cbc4",
   "theme_color": "#8b969c",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Amp plan with racks on the stage"
+    },
+    {
+      "src": "screenshots/narrow.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "label": "Amp Plan on a phone"
+    }
   ]
 }

@@ -1,6 +1,6 @@
 // Amp Plan offline support: keep the app and its fonts so it opens without internet.
 // The page is served from the cache at once and refreshed in the background (newest version next launch).
-const CACHE = 'amp-plan-v1';
+const CACHE = 'amp-plan-v2';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));

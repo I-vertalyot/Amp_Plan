@@ -14,3 +14,4 @@ import shutil
 for f in ('manifest.webmanifest', 'sw.js'):
     shutil.copy(root / 'pwa' / f, root / 'dist' / f)
 shutil.copytree(root / 'pwa/icons', root / 'dist/icons', dirs_exist_ok=True)
+shutil.copytree(root / 'pwa/screenshots', root / 'dist/screenshots', dirs_exist_ok=True)
