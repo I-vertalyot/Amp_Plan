@@ -997,7 +997,7 @@
     const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') +
       (noZone ? '<li><span class="sw" style="background:var(--z8)"></span>No zone</li>' : '') + '</ul>';
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
-    const head = '<div class="plan-head"><div class="plan-title" aria-hidden="true"><span class="pt-amp">AMP</span><span class="pt-plan">PLAN</span></div><p class="plan-sub">' + esc(sub) + '</p></div>';
+    const head = '<div class="plan-head"><p class="plan-sub">' + esc(sub) + '</p></div>';
     // amps outside the racks sit on their zone's side of the stage, after that side's racks
     const sides = C.SIDES.map((sd) => {
       const items = C.planItems(v, sd);

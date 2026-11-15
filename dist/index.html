@@ -1177,6 +1177,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .psizer { background-image: repeating-linear-gradient(0deg, rgba(29, 31, 28, .05) 0 1px, transparent 1px var(--ch)); }
 .ptint-L { background-image: repeating-linear-gradient(90deg, rgba(29, 31, 28, .08) 0 1px, transparent 1px var(--cw)); background-color: rgba(58, 128, 214, .16); }
 .ptint-R { background-image: repeating-linear-gradient(270deg, rgba(29, 31, 28, .08) 0 1px, transparent 1px var(--cw)); background-color: rgba(252, 163, 17, .16); }
+.plan-head { grid-template-columns: 1fr; } .plan-sub { grid-column: 1; grid-row: auto; }
 
 </style>
 </head>
@@ -3666,7 +3667,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') +
       (noZone ? '<li><span class="sw" style="background:var(--z8)"></span>No zone</li>' : '') + '</ul>';
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
-    const head = '<div class="plan-head"><div class="plan-title" aria-hidden="true"><span class="pt-amp">AMP</span><span class="pt-plan">PLAN</span></div><p class="plan-sub">' + esc(sub) + '</p></div>';
+    const head = '<div class="plan-head"><p class="plan-sub">' + esc(sub) + '</p></div>';
     // amps outside the racks sit on their zone's side of the stage, after that side's racks
     const sides = C.SIDES.map((sd) => {
       const items = C.planItems(v, sd);
