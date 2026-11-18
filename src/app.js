@@ -1058,14 +1058,15 @@
   function fitZoom() {
     const v = cur();
     if (!v) return;
-    const lay = C.gridLayout(v, 64);
+    const lay = C.gridLayout(v, 64 * SPAN);
     const used = { L: 0, R: 0 };
     let rows = 6;
-    for (const it of lay) { used[it.side] = Math.max(used[it.side], it.c + 1); rows = Math.max(rows, it.r + it.h); }
-    const colsNeeded = Math.max(2, used.L + used.R + 1);
+    for (const it of lay) { used[it.side] = Math.max(used[it.side], it.c + SPAN); rows = Math.max(rows, it.r + it.h); }
+    // small columns needed across, plus one rack's room in the middle
+    const stepsNeeded = Math.max(2 * SPAN, used.L + used.R + SPAN);
     const W = gridWidth();
     const availH = Math.max(240, window.innerHeight - 170);
-    setZoom(Math.min(ZOOM_MAX, (W + 14) / (colsNeeded * CELL_W), availH / ((rows + 1) * CELL_H)));
+    setZoom(Math.min(ZOOM_MAX, (W - 2 * GRID_PAD) / (stepsNeeded * CELL_W / SPAN), availH / ((rows + 1) * CELL_H)));
     const wrap = $('.pgridwrap');
     try { if (wrap) wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { /* ignore */ }
   }
@@ -1076,13 +1077,16 @@
   const CELL_H = 30;
   // width the grid can use: the plan card's inner width (measured after each draw)
   const gridWidth = () => S.gridW || Math.max(320, Math.min(window.innerWidth - 120, 1600));
+  // the grid's step across is a third of a rack (one rack = SPAN steps); down it is one amp
+  const SPAN = C.GRID_SPAN;
   function gridGeom() {
     const z = zoomOf();
-    const cw = CELL_W * z;
+    const cw = (CELL_W * z) / SPAN;
     const ch = CELL_H * z;
     const W = gridWidth();
-    const cols = Math.max(2, Math.floor((W - 2 * GRID_PAD + 14 * z) / cw));
-    return { z, cw, ch, W, cols, half: Math.floor(cols / 2) };
+    // small columns per side: as many as let a rack at the last one still fit in its half
+    const half = Math.max(SPAN, Math.floor((W / 2 - GRID_PAD - 128 * z) / cw) + SPAN);
+    return { z, cw, ch, W, cols: 2 * half, half };
   }
   function gridHtml(v, a, L, deck) {
     const ro = S.readOnly;
@@ -1529,7 +1533,7 @@
     const x = e.clientX - b.left - g.dx; // where the item's left edge would be
     const side = x + 64 * z < W / 2 ? 'L' : 'R';
     const raw = side === 'L' ? (x - GRID_PAD) / cw : (W - GRID_PAD - x - 128 * z) / cw;
-    const c = Math.max(0, Math.min(half - 1, Math.round(raw)));
+    const c = Math.max(0, Math.min(half - SPAN, Math.round(raw)));
     const left = side === 'L' ? GRID_PAD + c * cw : W - GRID_PAD - c * cw - 128 * z;
     const r = Math.max(0, Math.round((e.clientY - b.top + canvas.scrollTop - g.dy - GRID_PAD) / ch));
     return { side, c, r, top: GRID_PAD + r * ch, left, cw, ch, half, cols };
@@ -1553,13 +1557,14 @@
     const at = new Map(lay.map((it) => [it.key, it]));
     const me = at.get(grp.key);
     if (!me) return [];
-    const gx = (side, c) => (side === 'L' ? c : 2 * half - 1 - c);
+    const gx = (side, c) => (side === 'L' ? c : 2 * half - SPAN - c);
     const dx = gx(cell.side, cell.c) - gx(me.side, me.c);
     const dr = cell.r - me.r;
     return grp.keys.map((k) => at.get(k)).filter(Boolean).map((it) => {
-      const x = Math.max(0, Math.min(2 * half - 1, gx(it.side, it.c) + dx));
-      const side = x < half ? 'L' : 'R';
-      return { key: it.key, side, c: side === 'L' ? x : 2 * half - 1 - x, r: Math.max(0, it.r + dr), h: it.h };
+      const x = Math.max(0, Math.min(2 * half - SPAN, gx(it.side, it.c) + dx));
+      const side = x + SPAN / 2 < half ? 'L' : 'R';
+      const c = side === 'L' ? x : 2 * half - SPAN - x;
+      return { key: it.key, side, c: Math.max(0, Math.min(half - SPAN, c)), r: Math.max(0, it.r + dr), h: it.h };
     });
   }
   function showGroupGhosts(canvas, cell) {

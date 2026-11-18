@@ -458,28 +458,35 @@ t('single amps take a place among the racks', () => {
   assert.deepStrictEqual(C.planItems(back, 'R').map((x) => x.key), C.planItems(v, 'R').map((x) => x.key));
 });
 
-t('plan grid: one cell per amp, counted from each side edge', () => {
+t('plan grid: steps a third of a rack, counted from each side edge', () => {
   const v = C.makeExample();
-  const lay = C.gridLayout(v, 4);
-  for (const a of lay) for (const b of lay) if (a !== b && a.side === b.side && a.c === b.c) assert.ok(a.r + a.h <= b.r || b.r + b.h <= a.r, 'no overlap');
+  const S = C.GRID_SPAN;
+  const lay = C.gridLayout(v, 4 * S);
+  for (const a of lay) for (const b of lay) if (a !== b && a.side === b.side && a.c < b.c + S && b.c < a.c + S) assert.ok(a.r + a.h <= b.r || b.r + b.h <= a.r, 'no overlap');
   const r1 = v.racks[0];
-  C.placeOnGrid(v, 'r:' + r1.id, 'R', 2, 0, 4);
+  C.placeOnGrid(v, 'r:' + r1.id, 'R', 6, 0, 4 * S);
   assert.strictEqual(r1.side, 'R');
-  assert.deepStrictEqual(r1.pos, { c: 2, r: 0, v: 2 });
+  assert.deepStrictEqual(r1.pos, { c: 6, r: 0, v: 3 });
+  // one step over still overlaps the rack: it slides below
   const r2 = v.racks[1];
-  C.placeOnGrid(v, 'r:' + r2.id, 'R', 2, 1, 4);
-  const p2 = C.gridLayout(v, 4).find((x) => x.key === 'r:' + r2.id);
+  C.placeOnGrid(v, 'r:' + r2.id, 'R', 7, 1, 4 * S);
+  const p2 = C.gridLayout(v, 4 * S).find((x) => x.key === 'r:' + r2.id);
   assert.ok(p2.r >= r1.size + 2, 'slides below the rack already there');
-  // zoomed out: 8 columns a side, positions keep their place from the edge
-  const wide = C.gridLayout(v, 8).find((x) => x.key === 'r:' + r1.id);
-  assert.strictEqual(wide.c, 2);
-  // old 8-column positions are read as left / right
+  // a whole rack over: side by side at the same height
+  C.placeOnGrid(v, 'r:' + r2.id, 'R', 6 + S, 0, 4 * S);
+  assert.strictEqual(C.gridLayout(v, 4 * S).find((x) => x.key === 'r:' + r2.id).r, 0);
+  // zoomed out: more columns a side, positions keep their place from the edge
+  const wide = C.gridLayout(v, 8 * S).find((x) => x.key === 'r:' + r1.id);
+  assert.strictEqual(wide.c, 6);
+  // old positions: v1 8-column grid, v2 whole racks -> thirds
   const raw = JSON.parse(JSON.stringify(C.serialize(v)));
   raw.racks[0].pos = { c: 6, r: 3 };
+  raw.racks[1].pos = { c: 2, r: 4, v: 2 };
   const back = C.sanitizeVenue(v.id, raw);
   assert.strictEqual(back.racks[0].side, 'R');
-  assert.deepStrictEqual(back.racks[0].pos, { c: 1, r: 3, v: 2 });
-  assert.strictEqual(C.placeOnGrid(v, 'r:nope', 'L', 0, 0, 4), false);
+  assert.deepStrictEqual(back.racks[0].pos, { c: 1 * S, r: 3, v: 3 });
+  assert.deepStrictEqual(back.racks[1].pos, { c: 2 * S, r: 4, v: 3 });
+  assert.strictEqual(C.placeOnGrid(v, 'r:nope', 'L', 0, 0, 4 * S), false);
 });
 
 t('Soundvision report becomes zones, speakers, amps and racks', () => {

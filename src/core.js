@@ -335,12 +335,12 @@
         assign: { scheme: v.net.assign.scheme, start: v.net.assign.start, size: v.net.assign.size, avoidDefaults: !!v.net.assign.avoidDefaults },
       },
       zones: v.zones.map((z) => ({ id: z.id, name: z.name, color: z.color, side: z.side || 'L' })),
-      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '', pos: r.pos ? { c: r.pos.c, r: r.pos.r, v: 2 } : null })),
+      racks: (v.racks || []).map((r) => ({ id: r.id, name: r.name, side: r.side, size: r.size, type: r.type || '', pos: r.pos ? { c: r.pos.c, r: r.pos.r, v: POS_V } : null })),
       planOrder: (v.planOrder || []).slice(),
       speakers: (v.speakers || []).map((g) => ({ id: g.id, model: g.model, custom: g.custom || '', qty: g.qty, zone: g.zone, amp: g.amp, per: g.per || 0 })),
       devices: v.devices.map((d) => ({
         id: d.id, name: d.name, model: d.model, zone: d.zone, ip: d.ip, net: d.net, location: d.location,
-        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '', pos: d.pos ? { c: d.pos.c, r: d.pos.r, v: 2 } : null,
+        port: d.port, serial: d.serial, notes: d.notes, status: d.status, rack: d.rack || '', slot: typeof d.slot === 'number' ? d.slot : -1, preset: d.preset || '', drives: d.drives || '', side: d.side || '', pos: d.pos ? { c: d.pos.c, r: d.pos.r, v: POS_V } : null,
       })),
       rackSize: Object.assign({}, v.rackSize || {}),
       createdAt: v.createdAt || 0, updatedAt: v.updatedAt || 0,
@@ -437,51 +437,62 @@
   // the plan is zoomed out the extra columns open up in the middle and nothing jumps sides.
   // A rack is size + 2 cells tall (its name on top), a single amp 3.
   const GRID_COLS = 8;
+  // Columns are a third of a rack wide, so racks can sit a third of a rack apart. A rack or single amp
+  // takes GRID_SPAN columns. Positions saved as v:3 count these small columns; v:2 counted whole racks.
+  const GRID_SPAN = 3;
+  const POS_V = 3;
   function cleanPos(p) {
     if (!p || typeof p !== 'object') return null;
     const c = Number(p.c);
     const r = Number(p.r);
     if (!Number.isFinite(c) || !Number.isFinite(r)) return null;
-    return { c: Math.max(0, Math.min(63, Math.round(c))), r: Math.max(0, Math.min(400, Math.round(r))), v: p.v === 2 ? 2 : 1 };
+    const ver = p.v === 3 ? 3 : p.v === 2 ? 2 : 1;
+    return { c: Math.max(0, Math.min(ver === 3 ? 200 : 63, Math.round(c))), r: Math.max(0, Math.min(400, Math.round(r))), v: ver };
   }
-  // positions saved before they counted from the outer edge were columns 0–7 of one 8-column grid
+  // v1: columns 0–7 of one 8-column grid; v2: whole racks from the side's outer edge; v3: thirds of a rack
   function migratePos(obj) {
-    if (!obj.pos || obj.pos.v === 2) return;
-    const side = obj.pos.c < 4 ? 'L' : 'R';
-    obj.side = side;
-    obj.pos = { c: side === 'L' ? obj.pos.c : 7 - Math.min(7, obj.pos.c), r: obj.pos.r, v: 2 };
+    if (!obj.pos || obj.pos.v === POS_V) return;
+    if (obj.pos.v !== 2) {
+      const side = obj.pos.c < 4 ? 'L' : 'R';
+      obj.side = side;
+      obj.pos = { c: side === 'L' ? obj.pos.c : 7 - Math.min(7, obj.pos.c), r: obj.pos.r, v: 2 };
+    }
+    obj.pos = { c: obj.pos.c * GRID_SPAN, r: obj.pos.r, v: POS_V };
   }
   const itemRows = (it) => (it.rack ? it.rack.size + 2 : 3);
-  // where everything sits on each side, with `half` columns per side: [{ key, rack|dev, side, c, r, h }]
+  const overlaps = (a, c, r, h) => a.c < c + GRID_SPAN && c < a.c + GRID_SPAN && r < a.r + a.h && a.r < r + h;
+  const halfOf = (half) => Math.max(GRID_SPAN, half || (GRID_COLS / 2) * GRID_SPAN);
+  const clampC = (c, half) => Math.max(0, Math.min(half - GRID_SPAN, Math.round(c)));
+  // where everything sits on each side, with `half` small columns per side: [{ key, rack|dev, side, c, r, h }]
   function gridLayout(v, half) {
-    half = Math.max(1, half || GRID_COLS / 2);
+    half = halfOf(half);
     const out = [];
     for (const side of SIDES) {
       const all = planItems(v, side);
       const placed = [];
-      const bottom = new Array(half).fill(0);
-      const free = (c, r, h) => !placed.some((p) => p.c === c && r < p.r + p.h && p.r < r + h);
+      const free = (c, r, h) => !placed.some((p) => overlaps(p, c, r, h));
       for (const it of all) {
         const pos = (it.rack || it.dev).pos;
         if (!pos) continue;
         const h = itemRows(it);
-        const c = Math.min(half - 1, pos.c);
+        const c = clampC(pos.c, half);
         let r = pos.r;
         while (!free(c, r, h)) r++;
         placed.push(Object.assign(it, { side, c, r, h }));
-        bottom[c] = Math.max(bottom[c], r + h + 1);
       }
+      // items with no place yet: whole-rack columns, the two outer ones first, the one that ends highest
+      const slots = [];
+      for (let c = 0; c + GRID_SPAN <= half; c += GRID_SPAN) slots.push(c);
+      const bottom = (c) => placed.filter((p) => p.c < c + GRID_SPAN && c < p.c + GRID_SPAN).reduce((m, p) => Math.max(m, p.r + p.h + 1), 0);
       for (const it of all) {
         if (it.c != null) continue;
         const h = itemRows(it);
-        // the two outer columns first, the column that ends highest; further in once they are long
-        const near = [0, Math.min(1, half - 1)];
-        let pick = near.reduce((a, b) => (bottom[b] < bottom[a] ? b : a));
-        if (bottom[pick] > 20) pick = bottom.indexOf(Math.min(...bottom));
-        let r = bottom[pick];
+        const near = slots.slice(0, 2);
+        let pick = near.reduce((a, b) => (bottom(b) < bottom(a) ? b : a));
+        if (bottom(pick) > 20) pick = slots.reduce((a, b) => (bottom(b) < bottom(a) ? b : a));
+        let r = bottom(pick);
         while (!free(pick, r, h)) r++;
         placed.push(Object.assign(it, { side, c: pick, r, h }));
-        bottom[pick] = r + h + 1;
       }
       out.push(...placed);
     }
@@ -491,45 +502,44 @@
   // Everything else keeps the place it has now; a taken cell slides the item down to the first gap.
   function placeOnGrid(v, key, side, c, r, half) {
     if (SIDES.indexOf(side) < 0) return false;
-    half = Math.max(1, half || GRID_COLS / 2);
+    half = halfOf(half);
     const lay = gridLayout(v, half);
-    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r, v: 2 };
+    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r, v: POS_V };
     const me = lay.find((it) => it.key === key);
     const obj = me ? me.rack || me.dev : key[0] === 'r' ? rackById(v, key.slice(2)) : v.devices.find((d) => d.id === key.slice(2));
     if (!obj) return false;
     const h = me ? me.h : key[0] === 'r' ? obj.size + 2 : 3;
-    c = Math.max(0, Math.min(half - 1, Math.round(c)));
+    c = clampC(c, half);
     r = Math.max(0, Math.round(r));
     const others = lay.filter((it) => it.key !== key && it.side === side);
-    while (others.some((p) => p.c === c && r < p.r + p.h && p.r < r + h)) r++;
-    obj.pos = { c, r, v: 2 };
+    while (others.some((p) => overlaps(p, c, r, h))) r++;
+    obj.pos = { c, r, v: POS_V };
     obj.side = side;
     return true;
   }
-
   // Move several racks / single amps at once: moves = [{ key, side, c, r }]. The group keeps its shape;
   // if any of it would land on something that stays put, the whole group slides down until it fits.
   function placeGroup(v, moves, half) {
-    half = Math.max(1, half || GRID_COLS / 2);
+    half = halfOf(half);
     const lay = gridLayout(v, half);
-    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r, v: 2 };
+    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r, v: POS_V };
     const keys = new Set(moves.map((m) => m.key));
     const items = [];
     for (const m of moves) {
       if (SIDES.indexOf(m.side) < 0) continue;
       const me = lay.find((it) => it.key === m.key);
       if (!me) continue;
-      items.push({ obj: me.rack || me.dev, side: m.side, c: Math.max(0, Math.min(half - 1, Math.round(m.c))), r: Math.max(0, Math.round(m.r)), h: me.h });
+      items.push({ obj: me.rack || me.dev, side: m.side, c: clampC(m.c, half), r: Math.max(0, Math.round(m.r)), h: me.h });
     }
     if (!items.length) return false;
-    // squeezed against an edge, two of the group can land in one column: stack them
+    // squeezed against an edge, two of the group can land on each other: stack them
     items.sort((a, b) => a.r - b.r);
-    items.forEach((a, i) => { while (items.slice(0, i).some((b) => b.side === a.side && b.c === a.c && a.r < b.r + b.h && b.r < a.r + a.h)) a.r++; });
+    items.forEach((a, i) => { while (items.slice(0, i).some((b) => b.side === a.side && overlaps(b, a.c, a.r, a.h))) a.r++; });
     const others = lay.filter((it) => !keys.has(it.key));
-    const hit = (dr) => items.some((a) => others.some((p) => p.side === a.side && p.c === a.c && a.r + dr < p.r + p.h && p.r < a.r + dr + a.h));
+    const hit = (dr) => items.some((a) => others.some((p) => p.side === a.side && overlaps(p, a.c, a.r + dr, a.h)));
     let dr = 0;
     while (hit(dr) && dr < 2000) dr++;
-    for (const a of items) { a.obj.pos = { c: a.c, r: a.r + dr, v: 2 }; a.obj.side = a.side; }
+    for (const a of items) { a.obj.pos = { c: a.c, r: a.r + dr, v: POS_V }; a.obj.side = a.side; }
     return true;
   }
 
@@ -1493,11 +1503,11 @@
     const MONO = 'Consolas, Menlo, monospace';
     const z = Math.max(0.3, Math.min(1.5, +opts.zoom || 1));
     const PAD = 14;
-    const CW = 142 * z; const CH = 30 * z; const BW = 128 * z;
-    const half = Math.max(1, Math.min(40, opts.half || 4));
+    const CW = 142 * z / GRID_SPAN; const CH = 30 * z; const BW = 128 * z;
+    const half = Math.max(GRID_SPAN, Math.min(200, opts.half || 4 * GRID_SPAN));
     const lay = gridLayout(v, half);
     const need = Math.max(...lay.map((it) => it.r + it.h), 0) * CH + 2 * PAD;
-    const W = Math.round(Math.max(opts.width || 0, 2 * (PAD + half * CW) - 14 * z, 600));
+    const W = Math.round(Math.max(opts.width || 0, 2 * (PAD + (half - GRID_SPAN) * CW + BW), 600));
     const HC = Math.round(Math.max(opts.height || 0, need, 400));
     // title
     let out = '';
@@ -1583,7 +1593,7 @@
     DEFAULT_RACK_SIZE, RACK_FOR, rackSizeOf, rackEquivalent, rackText, countPlan, rackSummary, equipmentLine,
     SPEAKERS, SPEAKER_MAP, SPEAKER_SERIES, DRIVE_AMPS, AMP_IDS, driveOptions, driveMax, drivePerOutput, speakerLabel, perAmp, ampsNeeded,
     nextIndex, syncGroup, removeGroup, speakerPlan,
-    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, gridLayout, placeOnGrid, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
+    SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, GRID_SPAN, gridLayout, placeOnGrid, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
     parseSoundvision, soundvisionPlan, venueFromSoundvision, svModel, placeGroup,
   };
