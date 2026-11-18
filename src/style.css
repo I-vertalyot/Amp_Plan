@@ -1159,3 +1159,10 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .ptint-L { background-image: repeating-linear-gradient(90deg, rgba(29, 31, 28, .08) 0 1px, transparent 1px var(--cw)); background-color: rgba(58, 128, 214, .16); }
 .ptint-R { background-image: repeating-linear-gradient(270deg, rgba(29, 31, 28, .08) 0 1px, transparent 1px var(--cw)); background-color: rgba(252, 163, 17, .16); }
 .plan-head { grid-template-columns: 1fr; } .plan-sub { grid-column: 1; grid-row: auto; }
+
+/* venue cards on the home page: each venue in its own bordered card */
+:root[data-skin="retro"] .rail .venue-list { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
+:root[data-skin="retro"] .rail .venue-item { border: 1px solid rgba(255, 255, 255, .45); border-radius: 4px; background: rgba(255, 255, 255, .08); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .18), 0 1px 0 rgba(0, 0, 0, .18); }
+:root[data-skin="retro"] .rail .venue-item:hover { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .7); }
+:root[data-skin="retro"] .rail .venue-item:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+:root[data-skin="retro"] .rail .venue-list { padding: 0; margin: 0 14px; }
