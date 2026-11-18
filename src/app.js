@@ -22,16 +22,16 @@
   // ink-illustration themes on top of it, picked from the ⋮ menu (styles under [data-theme="…"])
   const THEMES = [
     { id: 'classic', name: 'Classic', note: 'The beige office look', fonts: '' },
-    { id: 'snow', name: 'Snowfall night', note: 'White ink on black, falling snow', fonts: 'Gaegu:wght@400;700' },
-    { id: 'paper', name: 'Paper and ink', note: 'Black ink on paper, stipple', fonts: 'Patrick+Hand' },
-    { id: 'woodcut', name: 'Woodcut', note: 'Heavy black lines, cream type', fonts: 'Cabin+Sketch:wght@700&family=Courier+Prime:wght@400;700' },
-    { id: 'birch', name: 'Birch bark', note: 'Racks edged like tree trunks', fonts: 'Kalam:wght@400;700' },
-    { id: 'knit', name: 'Knit beanie', note: 'Chunky rounded outlines', fonts: 'Short+Stack' },
-    { id: 'comic', name: 'Comic panels', note: 'Thick panels, halftone dots', fonts: 'Bangers&family=Comic+Neue:wght@400;700' },
-    { id: 'orange', name: 'Ink and orange', note: 'Black and white with orange', fonts: 'Architects+Daughter' },
-    { id: 'navy', name: 'Midnight navy', note: 'Navy night, white ink, orange', fonts: 'Gochi+Hand&family=Gaegu:wght@400;700' },
-    { id: 'sketch', name: 'Sketchbook', note: 'Graph paper, pencil, tape', fonts: 'Caveat:wght@400;700' },
-    { id: 'quiet', name: 'Quiet ink', note: 'Thin lines, lots of white', fonts: 'Gaegu:wght@700&family=Delius' },
+    { id: 'snow', name: 'Snowfall night', note: 'White ink on black, falling snow', fonts: 'Gaegu:wght@400;700', tex: 'snow', patterns: true },
+    { id: 'paper', name: 'Paper and ink', note: 'Black ink on paper, stipple', fonts: 'Patrick+Hand', tex: 'stipple', patterns: true },
+    { id: 'woodcut', name: 'Woodcut', note: 'Heavy black lines, cream type', fonts: 'Cabin+Sketch:wght@700&family=Courier+Prime:wght@400;700', tex: 'hatch', patterns: true },
+    { id: 'birch', name: 'Birch bark', note: 'Racks edged like tree trunks', fonts: 'Kalam:wght@400;700', tex: 'stipple', patterns: true, bark: true },
+    { id: 'knit', name: 'Knit beanie', note: 'Chunky rounded outlines', fonts: 'Short+Stack', tex: 'stipple' },
+    { id: 'comic', name: 'Comic panels', note: 'Thick panels, halftone dots', fonts: 'Bangers&family=Comic+Neue:wght@400;700', tex: 'halftone', halftone: true },
+    { id: 'orange', name: 'Ink and orange', note: 'Black and white with orange', fonts: 'Architects+Daughter', tex: 'stipple' },
+    { id: 'navy', name: 'Midnight navy', note: 'Navy night, white ink, orange', fonts: 'Gochi+Hand&family=Gaegu:wght@400;700', tex: 'snow' },
+    { id: 'sketch', name: 'Sketchbook', note: 'Graph paper, pencil, tape', fonts: 'Caveat:wght@400;700', tex: 'grid', tape: true },
+    { id: 'quiet', name: 'Quiet ink', note: 'Thin lines, lots of white', fonts: 'Gaegu:wght@700&family=Delius', tex: 'none', patterns: true },
   ];
   function applyTheme(id) {
     const t = THEMES.find((x) => x.id === id) || THEMES[0];
@@ -1472,6 +1472,50 @@
       },
     });
   }
+  // The picked theme as plain values for the picture: colours and sizes read from the page's CSS,
+  // the handwriting fonts fetched and embedded, so the saved image looks like the theme.
+  const fontCache = {};
+  async function embedFonts(t) {
+    if (!t.fonts) return '';
+    if (fontCache[t.id] != null) return fontCache[t.id];
+    let css = '';
+    try {
+      const res = await fetch('https://fonts.googleapis.com/css2?family=' + t.fonts + '&display=swap');
+      const text = await res.text();
+      // keep the latin sets (enough for venue names and the plan)
+      const blocks = text.split('/*').filter((b) => /^\s*latin(-ext)?\s*\*\//.test(b)).map((b) => b.slice(b.indexOf('*/') + 2));
+      for (let b of blocks) {
+        const m = /url\((https:[^)]+)\)/.exec(b);
+        if (!m) continue;
+        const buf = await (await fetch(m[1])).arrayBuffer();
+        let bin = '';
+        const u8 = new Uint8Array(buf);
+        for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+        b = b.replace(m[1], 'data:font/woff2;base64,' + btoa(bin));
+        css += b;
+      }
+    } catch (e) { css = ''; }
+    fontCache[t.id] = css;
+    return css;
+  }
+  async function themeSpec() {
+    const t = THEMES.find((x) => x.id === prefs.theme);
+    if (!t || t.id === 'classic') return null;
+    const cs = getComputedStyle(document.documentElement);
+    const g = (k) => cs.getPropertyValue('--t-' + k).trim();
+    return {
+      bg: g('bg'), ink: g('ink'), paper: g('paper'), mut: g('mut'), lt: g('lt'), rt: g('rt'), rack: g('rack'), row: g('row'), rowink: g('rowink'),
+      acc: g('acc'), accink: g('accink'), head: g('head').split(',')[0], body: g('body').split(',')[0], headw: parseInt(g('headw'), 10) || 700,
+      sw: parseFloat(g('sw')) || 2.5, rad: parseFloat(g('rad')) || 0,
+      tex: t.tex || 'none', patterns: !!t.patterns, bark: !!t.bark, tape: !!t.tape, halftone: !!t.halftone,
+      fontCss: await embedFonts(t),
+    };
+  }
+  async function planPicture(v) {
+    const o = planShot();
+    o.theme = await themeSpec();
+    return C.planSvg(v, o);
+  }
   // the plan's size and zoom as on screen, so the picture matches what the person sees
   function planShot() {
     const g = gridGeom();
@@ -2100,7 +2144,7 @@
       const v = cur();
       if (!v) return;
       const base = (v.name || 'venue').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'venue';
-      svgToPng(C.planSvg(v, planShot())).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
+      planPicture(v).then(svgToPng).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
     },
     'theme-pick': () => openThemePicker(),
     'psel-clear': () => { S.psel.clear(); updateSel(); },
@@ -3105,8 +3149,8 @@
         const base = slug(v.name);
         const kind = b.dataset.x;
         if (kind === 'copy') { copyText(C.toDelimited(v, '\t'), 'Table copied. Paste it into a spreadsheet or email.'); return; }
-        if (kind === 'svg') { saveFile(base + '-amp-plan.svg', C.planSvg(v, planShot())); return; }
-        if (kind === 'png') { svgToPng(C.planSvg(v, planShot())).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
+        if (kind === 'svg') { planPicture(v).then((svg) => saveFile(base + '-amp-plan.svg', svg)); return; }
+        if (kind === 'png') { planPicture(v).then(svgToPng).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
         if (kind === 'sheet') saveFile(base + '-patch-sheet.html', C.patchSheet(v));
         else if (kind === 'csv') saveFile(base + '-ip-plan.csv', '﻿' + C.toDelimited(v, sep));
         else if (kind === 'json') saveFile(base + '-backup.json', C.bundle([v]));

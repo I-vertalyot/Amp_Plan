@@ -1500,8 +1500,25 @@
     const info = netInfo(v);
     const e = escHtml;
     const zmap = new Map(v.zones.map((z) => [z.id, z]));
+    // the look: the classic one, or the ink theme the person picked (opts.theme, read from the page)
+    const T = opts.theme || null;
     const SANS = 'Arial, Helvetica, sans-serif';
     const MONO = 'Consolas, Menlo, monospace';
+    const P = T ? {
+      bg: T.bg, ink: T.ink, title: T.ink, sub: T.mut, mark1: T.acc === T.ink ? T.ink : T.acc, mark2: T.ink,
+      tagL: T.ink, tagLInk: T.bg, tagR: T.ink, tagRInk: T.bg, lt: T.lt, rt: T.rt, grid: T.ink, gridOp: 0.07, mid: T.ink, midOp: 0.8, frame: T.ink,
+      deckFill: T.paper, deckOp: 1, deckStroke: T.ink, deckInk: T.ink, rack: T.rack, rackStroke: T.ink, rackHead: T.rack === T.ink ? T.rowink : T.mut,
+      row: T.row, rowInk: T.rowink, rowStroke: T.rowink, model: T.rowink, free: T.rack === T.ink ? T.rowink : T.mut, legend: T.ink,
+      head: T.head + ', cursive', body: T.body + ', cursive', headw: T.headw || 700, sw: T.sw || 2.5, rad: T.rad == null ? 4 : T.rad,
+      wob: true, patterns: !!T.patterns,
+    } : {
+      bg: '#ece6d8', ink: '#1d1f1c', title: '#14213d', sub: '#5b666c', mark1: '#fca311', mark2: '#14213d',
+      tagL: '#14213d', tagLInk: '#fff', tagR: '#a0570f', tagRInk: '#fff', lt: '#d3dadd', rt: '#f1dcb8', grid: '#1d1f1c', gridOp: 0.08, mid: '#1d1f1c', midOp: 0.25, frame: '#b9b3a6',
+      deckFill: '#f4efe4', deckOp: 0.75, deckStroke: '#a8a294', deckInk: '#9a958a', rack: '#1b1d1f', rackStroke: '#000', rackHead: '#8a8f93',
+      row: '#26292c', rowInk: '#eeeeee', rowStroke: null, model: '#888888', free: '#6f7579', legend: '#1d1f1c',
+      head: SANS, body: MONO, headw: 700, sw: 1, rad: 3, wob: false, patterns: false,
+    };
+    const W8 = P.wob ? ' filter="url(#wob)"' : '';
     const z = Math.max(0.3, Math.min(1.5, +opts.zoom || 1));
     const PAD = 14;
     const CW = 142 * z / GRID_SPAN; const CH = 30 * z; const BW = 128 * z;
@@ -1510,60 +1527,105 @@
     const need = Math.max(...lay.map((it) => it.r + it.h), 0) * CH + 2 * PAD;
     const W = Math.round(Math.max(opts.width || 0, 2 * (PAD + (half - GRID_SPAN) * CW + BW), 600));
     const HC = Math.round(Math.max(opts.height || 0, need, 400));
-    // title
+    // zone markers: the zone colour, or (black-and-white themes) an ink pattern per zone
+    const PATS = ['s', 'h45', 'dots', 'x', 'h-45', 'v', 'hz', 'bigdots', 'grid'];
+    const patDef = (id, kind, ink) => {
+      const sz = kind === 'bigdots' ? 8 : 5;
+      let d = '';
+      if (kind === 'h45' || kind === 'x') d += '<path d="M-1 1 L1 -1 M0 5 L5 0 M4 6 L6 4" stroke="' + ink + '" stroke-width="1.6"/>';
+      if (kind === 'h-45' || kind === 'x') d += '<path d="M-1 4 L1 6 M0 0 L5 5 M4 -1 L6 1" stroke="' + ink + '" stroke-width="1.6"/>';
+      if (kind === 'dots') d += '<circle cx="2.5" cy="2.5" r="1.3" fill="' + ink + '"/>';
+      if (kind === 'bigdots') d += '<circle cx="4" cy="4" r="2" fill="' + ink + '"/>';
+      if (kind === 'v') d += '<rect x="0" y="0" width="2" height="5" fill="' + ink + '"/>';
+      if (kind === 'hz') d += '<rect x="0" y="0" width="5" height="2" fill="' + ink + '"/>';
+      if (kind === 'grid') d += '<path d="M0 0.5 H5 M0.5 0 V5" stroke="' + ink + '" stroke-width="1"/>';
+      return '<pattern id="' + id + '" width="' + sz + '" height="' + sz + '" patternUnits="userSpaceOnUse">' + d + '</pattern>';
+    };
+    let defs = '';
+    if (P.wob) defs += '<filter id="wob"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="3.2"/></filter>';
+    if (P.patterns) PATS.forEach((k, i) => { if (k !== 's') { defs += patDef('zr' + i, k, P.rowInk) + patDef('zl' + i, k, P.legend); } });
+    const zoneFill = (c, where) => (!P.patterns ? ZONE_HEX[c] : PATS[c] === 's' ? (where === 'row' ? P.rowInk : P.legend) : 'url(#z' + (where === 'row' ? 'r' : 'l') + c + ')');
+    // the page's background texture
+    const tex = T && T.tex;
+    if (tex === 'snow') defs += '<pattern id="tex" width="46" height="52" patternUnits="userSpaceOnUse"><circle cx="4" cy="5" r="1.4" fill="' + T.ink + '" fill-opacity=".22"/><circle cx="27" cy="31" r="1" fill="' + T.ink + '" fill-opacity=".16"/><circle cx="38" cy="12" r=".9" fill="' + T.ink + '" fill-opacity=".16"/></pattern>';
+    if (tex === 'stipple') defs += '<pattern id="tex" width="11" height="13" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".8" fill="' + T.ink + '" fill-opacity=".08"/></pattern>';
+    if (tex === 'grid') defs += '<pattern id="tex" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M0 0.5 H24 M0.5 0 V24" stroke="#9fb3c8" stroke-opacity=".35"/></pattern>';
+    if (tex === 'hatch') defs += '<pattern id="tex" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(10)"><path d="M0.5 0 V7" stroke="' + T.ink + '" stroke-opacity=".06"/></pattern>';
+    if (tex === 'halftone') defs += '<pattern id="tex" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1" fill="' + T.ink + '" fill-opacity=".05"/></pattern>';
+    if (T && T.halftone) defs += '<pattern id="half" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1" fill="' + T.ink + '" fill-opacity=".18"/></pattern>';
+    // a box: fill, then (in ink themes) a wobbly hand-drawn outline over it
+    const box = (x, y, w, h, fill, stroke, sw, rx, extra) =>
+      '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '" fill="' + fill + '"' + (extra || '') + '/>' +
+      (stroke ? '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '" fill="none" stroke="' + stroke + '" stroke-width="' + sw + '"' + W8 + '/>' : '');
     let out = '';
     // small AMP PLAN mark, the venue name large, then where / when and the counts
-    out += '<text x="' + W / 2 + '" y="22" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, ' + SANS + '" font-size="20" font-weight="700" font-style="italic"><tspan fill="#fca311">AMP</tspan><tspan fill="#14213d" dx="6">PLAN</tspan></text>';
-    out += '<text x="' + W / 2 + '" y="60" text-anchor="middle" font-family="' + SANS + '" font-size="32" font-weight="700" fill="#14213d">' + e(String(v.name || 'Venue').slice(0, 80)) + '</text>';
-    out += '<text x="' + W / 2 + '" y="86" text-anchor="middle" font-family="' + SANS + '" font-size="15" fill="#5b666c">' + e([v.city, formatDate(v.date), plural((v.racks || []).length, 'rack'), plural(v.devices.filter((d) => isAmpModel(d.model)).length, 'amp')].filter(Boolean).join(' · ')) + '</text>';
+    out += '<text x="' + W / 2 + '" y="22" text-anchor="middle" font-family="' + (T ? P.head : 'Barlow Condensed, Arial Narrow, ' + SANS) + '" font-size="20" font-weight="700"' + (T ? '' : ' font-style="italic"') + '><tspan fill="' + P.mark1 + '">AMP</tspan><tspan fill="' + P.mark2 + '" dx="6">PLAN</tspan></text>';
+    out += '<text x="' + W / 2 + '" y="60" text-anchor="middle" font-family="' + P.head + '" font-size="' + (T ? 36 : 32) + '" font-weight="' + P.headw + '" fill="' + P.title + '">' + e(String(v.name || 'Venue').slice(0, 80)) + '</text>';
+    out += '<text x="' + W / 2 + '" y="86" text-anchor="middle" font-family="' + (T ? P.body : SANS) + '" font-size="15" fill="' + P.sub + '">' + e([v.city, formatDate(v.date), plural((v.racks || []).length, 'rack'), plural(v.devices.filter((d) => isAmpModel(d.model)).length, 'amp')].filter(Boolean).join(' · ')) + '</text>';
     const TAG = 102;
     const TOP = TAG + 28;
-    out += '<rect x="0" y="' + TAG + '" width="70" height="24" fill="#14213d"/><text x="35" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">LEFT</text>';
-    out += '<rect x="' + (W - 70) + '" y="' + TAG + '" width="70" height="24" fill="#a0570f"/><text x="' + (W - 35) + '" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">RIGHT</text>';
-    // the plan: two halves, grid lines one amp apart counted from each outer edge
-    let g = '<rect x="0" y="0" width="' + W / 2 + '" height="' + HC + '" fill="#d3dadd"/><rect x="' + W / 2 + '" y="0" width="' + W / 2 + '" height="' + HC + '" fill="#f1dcb8"/>';
+    const tagFont = T ? P.head : SANS;
+    out += box(0, TAG, 70, 24, P.tagL, T ? P.ink : null, P.sw, T ? P.rad : 0) + '<text x="35" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + tagFont + '" font-size="13" font-weight="700" letter-spacing="1.5" fill="' + P.tagLInk + '">LEFT</text>';
+    out += box(W - 70, TAG, 70, 24, P.tagR, T ? P.ink : null, P.sw, T ? P.rad : 0) + '<text x="' + (W - 35) + '" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + tagFont + '" font-size="13" font-weight="700" letter-spacing="1.5" fill="' + P.tagRInk + '">RIGHT</text>';
+    // the plan: two halves, grid lines one step apart counted from each outer edge
+    let g = '<rect x="0" y="0" width="' + W / 2 + '" height="' + HC + '" fill="' + P.lt + '"/><rect x="' + W / 2 + '" y="0" width="' + W / 2 + '" height="' + HC + '" fill="' + P.rt + '"/>';
+    if (T && T.halftone) g += '<rect x="0" y="0" width="' + W / 2 + '" height="' + HC + '" fill="url(#half)"/>';
     let lines = '';
     for (let x = PAD; x < W / 2; x += CW) lines += 'M' + x.toFixed(1) + ' 0V' + HC;
     for (let x = W - PAD; x > W / 2; x -= CW) lines += 'M' + x.toFixed(1) + ' 0V' + HC;
     for (let y = PAD; y < HC; y += CH) lines += 'M0 ' + y.toFixed(1) + 'H' + W;
-    g += '<path d="' + lines + '" stroke="#1d1f1c" stroke-opacity="0.08" stroke-width="1" fill="none"/>';
-    g += '<line x1="' + W / 2 + '" y1="0" x2="' + W / 2 + '" y2="' + HC + '" stroke="#1d1f1c" stroke-opacity="0.25" stroke-width="1.5"/>';
-    g += '<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (HC - 1) + '" fill="none" stroke="#b9b3a6"/>';
-    const deck = (label, y) => '<rect x="' + (W / 2 - 60) + '" y="' + y + '" width="120" height="34" fill="#f4efe4" fill-opacity="0.75" stroke="#a8a294" stroke-width="1.5"/><text x="' + W / 2 + '" y="' + (y + 23.5) + '" text-anchor="middle" font-family="' + SANS + '" font-size="20" font-weight="700" letter-spacing="7" fill="#9a958a">' + label + '</text>';
+    g += '<path d="' + lines + '" stroke="' + P.grid + '" stroke-opacity="' + P.gridOp + '" stroke-width="1" fill="none"/>';
+    g += '<line x1="' + W / 2 + '" y1="0" x2="' + W / 2 + '" y2="' + HC + '" stroke="' + P.mid + '" stroke-opacity="' + P.midOp + '" stroke-width="' + (T ? P.sw : 1.5) + '"' + W8 + '/>';
+    g += '<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (HC - 1) + '" fill="none" stroke="' + P.frame + '" stroke-width="' + (T ? P.sw : 1) + '"' + W8 + '/>';
+    const deck = (label, y) => box(W / 2 - 60, y, 120, 34, P.deckFill, P.deckStroke, T ? P.sw : 1.5, T ? P.rad : 0, P.deckOp < 1 ? ' fill-opacity="' + P.deckOp + '"' : '') +
+      '<text x="' + W / 2 + '" y="' + (y + 23.5) + '" text-anchor="middle" font-family="' + (T ? P.head : SANS) + '" font-size="20" font-weight="700" letter-spacing="7" fill="' + P.deckInk + '">' + label + '</text>';
     g += deck('STAGE', 16) + deck('FOH', HC - 52);
-    // compact rack style: dark row, zone colour as a stripe on the left, short model on the right
+    // one amp: a row with its zone marker on the left, "preset - IP", the short model on the right
     const chip = (d, x, y, w) => {
       const zz = zmap.get(d.zone);
       const c = zz ? zz.color : 8;
-      return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="24" rx="2" fill="#26292c"/>' +
-        '<rect x="' + x + '" y="' + y + '" width="6" height="24" fill="' + ZONE_HEX[c] + '"/>' +
-        '<text x="' + (x + 6 + (w - 26) / 2) + '" y="' + (y + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11.5" font-weight="700" fill="#eeeeee">' + e(slotLabel(v, d, info).slice(0, 14)) + '</text>' +
-        '<text x="' + (x + w - 4) + '" y="' + (y + 15.5) + '" text-anchor="end" font-family="' + MONO + '" font-size="8" fill="#888888">' + e(String(modelOf(d.model).label).replace(/^LA/, '')) + '</text>';
+      const lab = e(slotLabel(v, d, info).slice(0, 14));
+      const mdl = e(String(modelOf(d.model).label).replace(/^LA/, ''));
+      if (!T) {
+        return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="24" rx="2" fill="' + P.row + '"/>' +
+          '<rect x="' + x + '" y="' + y + '" width="6" height="24" fill="' + ZONE_HEX[c] + '"/>' +
+          '<text x="' + (x + 6 + (w - 26) / 2) + '" y="' + (y + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11.5" font-weight="700" fill="' + P.rowInk + '">' + lab + '</text>' +
+          '<text x="' + (x + w - 4) + '" y="' + (y + 15.5) + '" text-anchor="end" font-family="' + MONO + '" font-size="8" fill="' + P.model + '">' + mdl + '</text>';
+      }
+      const mark = P.patterns
+        ? '<rect x="' + (x + 4) + '" y="' + (y + 4.5) + '" width="10" height="15" rx="1.5" fill="' + zoneFill(c, 'row') + '" stroke="' + P.rowInk + '" stroke-width="1.3"/>'
+        : '<rect x="' + x + '" y="' + y + '" width="7" height="24" fill="' + ZONE_HEX[c] + '"/>';
+      return box(x, y, w, 24, P.row, P.rowStroke, 1.5, Math.max(0, P.rad - 2)) + mark +
+        '<text x="' + (x + 10 + (w - 30) / 2) + '" y="' + (y + 16.5) + '" text-anchor="middle" font-family="' + P.body + '" font-size="13.5" font-weight="700" fill="' + P.rowInk + '">' + lab + '</text>' +
+        '<text x="' + (x + w - 4) + '" y="' + (y + 15.5) + '" text-anchor="end" font-family="' + P.body + '" font-size="9" fill="' + P.model + '" fill-opacity=".75">' + mdl + '</text>';
     };
     for (const it of lay) {
       const x = it.side === 'L' ? PAD + it.c * CW : W - PAD - it.c * CW - BW;
       const y = PAD + it.r * CH;
       const h = it.h * 30 - 8; // drawn at 100% inside, then scaled like the page does
-      let r = '<rect x="0.5" y="0.5" width="127" height="' + (h - 1) + '" rx="3" fill="#1b1d1f" stroke="#000"/>';
+      let r = T ? box(0.5, 0.5, 127, h - 1, P.rack, P.rackStroke, P.sw, P.rad) : '<rect x="0.5" y="0.5" width="127" height="' + (h - 1) + '" rx="3" fill="' + P.rack + '" stroke="' + P.rackStroke + '"/>';
+      if (T && T.bark) r += '<path d="M3 4 V' + (h - 4) + ' M125 4 V' + (h - 4) + '" stroke="' + P.ink + '" stroke-width="4" stroke-dasharray="9 6"/>';
+      if (T && T.tape) r += '<rect x="41" y="-8" width="46" height="14" fill="#e8dfbf" fill-opacity=".85" transform="rotate(-4 64 -1)"/>';
       const name = it.rack ? it.rack.name : (it.dev.name || modelOf(it.dev.model).label);
       const sub = it.rack ? it.rack.type || (rackModel(v, it.rack) || '') : modelOf(it.dev.model).label;
-      // racks show only their type (the rack's name is left out); single amps show name and model
-      if (!it.rack) r += '<text x="64" y="14" text-anchor="middle" font-family="' + MONO + '" font-size="9" font-weight="700" letter-spacing="0.6" fill="#c9cdd0">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
-      else r += '<text x="64" y="14" text-anchor="middle" font-family="' + MONO + '" font-size="8" letter-spacing="0.5" fill="#8a8f93">' + e(String(sub || 'Rack').slice(0, 22)) + '</text>';
+      // racks show only their type (the rack's name is left out); single amps show their name
+      const hf = T ? P.body : MONO;
+      if (!it.rack) r += '<text x="64" y="14" text-anchor="middle" font-family="' + hf + '" font-size="' + (T ? 11 : 9) + '" font-weight="700" letter-spacing="0.6" fill="' + (T ? P.rackHead : '#c9cdd0') + '">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
+      else r += '<text x="64" y="14" text-anchor="middle" font-family="' + hf + '" font-size="' + (T ? 10 : 8) + '" letter-spacing="0.5" fill="' + P.rackHead + '">' + e(String(sub || 'Rack').slice(0, 22)) + '</text>';
       if (it.rack) {
         rackSlots(v, it.rack).forEach((d, k) => {
           const sy = 20 + k * 27;
           if (d) r += chip(d, 5, sy, 118);
-          else r += '<rect x="5.5" y="' + (sy + 0.5) + '" width="117" height="23" rx="2" fill="none" stroke="#4a4f53" stroke-dasharray="3 3"/><text x="64" y="' + (sy + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11" fill="#6f7579">free</text>';
+          else r += '<rect x="5.5" y="' + (sy + 0.5) + '" width="117" height="23" rx="2" fill="none" stroke="' + P.free + '" stroke-dasharray="3 3"/><text x="64" y="' + (sy + 16) + '" text-anchor="middle" font-family="' + (T ? P.body : MONO) + '" font-size="12" fill="' + P.free + '">free</text>';
         });
       } else r += chip(it.dev, 5, 20, 118);
       g += '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + z + ')">' + r + '</g>';
     }
     out += '<g transform="translate(0 ' + TOP + ')">' + g + '</g>';
-    // every zone with its colour, under the plan (as on the page)
+    // every zone with its colour (or pattern), under the plan (as on the page)
     const amps = v.devices.filter((d) => isAmpModel(d.model));
-    const items = v.zones.map((zz) => ({ name: zz.name, color: ZONE_HEX[zz.color] }));
-    if (amps.some((d) => !zmap.has(d.zone))) items.push({ name: 'No zone', color: ZONE_HEX[8] });
+    const items = v.zones.map((zz) => ({ name: zz.name, c: zz.color }));
+    if (amps.some((d) => !zmap.has(d.zone))) items.push({ name: 'No zone', c: 8 });
     const legW = items.map((it) => 26 + Math.min(20, it.name.length) * 8.6 + 26);
     let lx = 0; const rowsL = [[]];
     legW.forEach((w, i) => { if (lx + w > W - 40 && rowsL[rowsL.length - 1].length) { rowsL.push([]); lx = 0; } rowsL[rowsL.length - 1].push(i); lx += w; });
@@ -1572,8 +1634,8 @@
       const tot = ln.reduce((n, i) => n + legW[i], 0);
       let x = (W - tot) / 2;
       ln.forEach((i) => {
-        out += '<rect x="' + x + '" y="' + (ly - 13) + '" width="16" height="16" rx="2" fill="' + items[i].color + '"/>';
-        out += '<text x="' + (x + 24) + '" y="' + ly + '" font-family="' + SANS + '" font-size="13" font-weight="700" letter-spacing="0.6" fill="#1d1f1c">' + e(items[i].name.toUpperCase().slice(0, 20)) + '</text>';
+        out += '<rect x="' + x + '" y="' + (ly - 13) + '" width="16" height="16" rx="2" fill="' + zoneFill(items[i].c, 'legend') + '"' + (T ? ' stroke="' + P.legend + '" stroke-width="1.5"' : '') + '/>';
+        out += '<text x="' + (x + 24) + '" y="' + ly + '" font-family="' + (T ? P.body : SANS) + '" font-size="' + (T ? 15 : 13) + '" font-weight="700" letter-spacing="0.6" fill="' + P.legend + '">' + e(items[i].name.toUpperCase().slice(0, 20)) + '</text>';
         x += legW[i];
       });
       ly += 26;
@@ -1582,8 +1644,12 @@
     const M = 32;
     const H = Math.ceil(ly) + 2 * M - 10;
     const WW = W + 2 * M;
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + WW + '" height="' + H + '" viewBox="0 0 ' + WW + ' ' + H + '"><rect width="' + WW + '" height="' + H + '" fill="#ece6d8"/><g transform="translate(' + M + ' ' + M + ')">' + out + '</g></svg>';
+    const style = T && T.fontCss ? '<style>' + T.fontCss + '</style>' : '';
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + WW + '" height="' + H + '" viewBox="0 0 ' + WW + ' ' + H + '">' + (defs || style ? '<defs>' + style + defs + '</defs>' : '') +
+      '<rect width="' + WW + '" height="' + H + '" fill="' + P.bg + '"/>' + (tex && tex !== 'none' ? '<rect width="' + WW + '" height="' + H + '" fill="url(#tex)"/>' : '') +
+      '<g transform="translate(' + M + ' ' + M + ')">' + out + '</g></svg>';
   }
+
 
 
 
