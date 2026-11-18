@@ -1345,6 +1345,114 @@
     return v;
   }
 
+  // ---------------------------------------------------------------- Soundvision report import
+  // Reads the text of an L-Acoustics Soundvision report (the PDF's text, one line per row):
+  // groups, sources, their X position and the enclosures in each source's table.
+  const SV_KEY = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const SV_ALIAS = (() => {
+    const m = {};
+    for (const sp of SPEAKERS) {
+      m[SV_KEY(sp.id)] = sp.id;
+      const parts = sp.id.split(/\s+/);
+      if (sp.id.indexOf('/') >= 0) { // "A10 Focus/Wide" -> A10FOCUS, A10WIDE, A10
+        const base = parts[0];
+        parts.slice(1).join(' ').split('/').forEach((w) => { m[SV_KEY(base + w)] = sp.id; });
+        m[SV_KEY(base)] = m[SV_KEY(base)] || sp.id;
+      }
+    }
+    m.X15 = 'X15 HiQ'; m.K1SB = 'K1-SB';
+    return m;
+  })();
+  // "KS28_C" (cardioid, reversed) is a KS28; "KARA II" is "Kara II"; unknown names stay as written
+  function svModel(type) {
+    const t = String(type || '').trim().replace(/[_ ](C|CARDIO|REV|R)$/i, '');
+    return SV_ALIAS[SV_KEY(t)] || SV_ALIAS[SV_KEY(type)] || '';
+  }
+  const SV_NUM = /^[-+]?\d+(?:[.,]\d+)?$/;
+  function parseSoundvision(text) {
+    const lines = String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    if (!lines.some((l) => /^Soundvision\b/i.test(l) || /\.xmlp\b/i.test(l)) || !lines.some((l) => /^\d+\.\s*Source:/i.test(l))) {
+      throw new Error('This doesn’t look like a Soundvision report. Export the report from Soundvision as a PDF and try again.');
+    }
+    const rep = { file: '', author: '', groups: [] };
+    let group = null;
+    let src = null;
+    for (const l of lines) {
+      let m;
+      if ((m = /^File name:\s*(.+)$/i.exec(l))) { rep.file = m[1].replace(/\.xmlp$/i, '').trim(); continue; }
+      if ((m = /^Author:\s*(.+)$/i.exec(l))) { rep.author = m[1].trim(); continue; }
+      if ((m = /^\d+\.\s*Group:\s*(.+)$/i.exec(l))) { group = { name: m[1].trim(), sources: [] }; rep.groups.push(group); src = null; continue; }
+      if ((m = /^\d+\.\s*Source:\s*(.+)$/i.exec(l))) {
+        if (!group) { group = { name: 'Main', sources: [] }; rep.groups.push(group); }
+        src = { name: m[1].trim(), x: null, boxes: [] };
+        group.sources.push(src);
+        continue;
+      }
+      if (!src) continue;
+      if ((m = /^Position \(X;[^)]*\):\s*([-+]?\d+(?:\.\d+)?)/i.exec(l))) { if (src.x == null) src.x = +m[1]; continue; }
+      if ((m = /^#\d+\s+(.+)$/.exec(l))) {
+        const words = [];
+        for (const w of m[1].split(' ')) { if (SV_NUM.test(w) || /\d+\/\d+/.test(w) || w === '|') break; words.push(w); }
+        if (words.length) src.boxes.push(words.join(' '));
+      }
+    }
+    rep.groups = rep.groups.filter((g) => g.sources.some((s) => s.boxes.length));
+    if (!rep.groups.length) throw new Error('No speakers found in this Soundvision report.');
+    return rep;
+  }
+  // Which side a source is on: its name first ("L2 Left"), then the sign of X (Soundvision: +X is left).
+  function svSide(s) { return inferSide(s.name) || ''; }
+  // Build the zones and speaker groups for a report. Each Soundvision group becomes a zone, split into
+  // L and R zones when its sources are named left and right. L2D bottom boxes count into their L2 hang.
+  function soundvisionPlan(rep) {
+    const zones = [];
+    for (const g of rep.groups) {
+      const srcs = g.sources.filter((s) => s.boxes.length);
+      const sides = new Set(srcs.map(svSide));
+      const split = sides.has('L') && sides.has('R');
+      const parts = split ? ['L', 'R', ''].map((sd) => ({ sd, list: srcs.filter((s) => svSide(s) === sd) })).filter((p) => p.list.length) : [{ sd: svSide(srcs[0]) && sides.size === 1 ? svSide(srcs[0]) : '', list: srcs }];
+      for (const p of parts) {
+        const name = str(split && p.sd ? g.name + ' ' + p.sd : g.name, 60);
+        const counts = new Map();
+        for (const s of p.list) {
+          const hasL2 = s.boxes.some((b) => svModel(b) === 'L2');
+          for (const b of s.boxes) {
+            let model = svModel(b);
+            if (model === 'L2D' && hasL2) model = 'L2';
+            const key = model || 'Custom:' + b.trim();
+            const c = counts.get(key) || { model: model || 'Custom', custom: model ? '' : b.trim(), qty: 0, where: [] };
+            c.qty++;
+            if (c.where.indexOf(s.name) < 0) c.where.push(s.name);
+            counts.set(key, c);
+          }
+        }
+        zones.push({ name, side: p.sd, speakers: Array.from(counts.values()) });
+      }
+    }
+    return zones;
+  }
+  function venueFromSoundvision(rep, o) {
+    o = o || {};
+    const plan = soundvisionPlan(rep);
+    const v = makeVenue({ name: o.name || rep.file || 'Soundvision import', zones: plan.map((z) => z.name), colors: plan.map((z, i) => DEFAULT_ZONE_COLORS[i] != null ? DEFAULT_ZONE_COLORS[i] : i % 9) });
+    v.city = o.city || '';
+    v.date = o.date || '';
+    let unnamed = 0;
+    v.zones.forEach((z, i) => { z.side = plan[i].side || inferSide(z.name) || (unnamed++ % 2 ? 'R' : 'L'); });
+    v.speakers = [];
+    plan.forEach((pz, i) => {
+      for (const sp of pz.speakers) {
+        const g = { id: uid('s'), model: sp.model, custom: sp.custom, qty: sp.qty, zone: v.zones[i].id, amp: driveOptions(sp.model)[0], per: 0 };
+        v.speakers.push(g);
+        const where = str(sp.where.join(', '), 80);
+        syncGroup(v, g).added.forEach((d) => { d.location = where; });
+      }
+    });
+    packRacks(v);
+    applyChanges(v, planAutoAssign(v, { scheme: 'zones', start: 11, size: 10, scope: 'all', avoidDefaults: true }).changes);
+    return v;
+  }
+
   // ---------------------------------------------------------------- amp plan picture (SVG)
   const ZONE_TEXT = ['#4ea1ff', '#ff7b4a', '#2ed3a0', '#ffc233', '#ff74c4', '#63d863', '#ad9dff', '#ff6b6b', '#b8c4c9'];
   function planSvg(v) {
@@ -1452,6 +1560,7 @@
     nextIndex, syncGroup, removeGroup, speakerPlan,
     SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, gridLayout, placeOnGrid, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
+    parseSoundvision, soundvisionPlan, venueFromSoundvision, svModel,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.IPCore = api;

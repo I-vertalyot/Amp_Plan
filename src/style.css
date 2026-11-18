@@ -1206,3 +1206,10 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .psizer { background-position: 0 14px; }
 .ptint-L { background-position: 14px 0; }
 .ptint-R { background-position: calc(100% - 14px) 0; }
+
+/* Soundvision import */
+.sv-sum { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+.sv-sum th, .sv-sum td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line, #c9c9c9); vertical-align: top; }
+.sv-sum thead th { border-top: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.sv-sum .muted { opacity: .7; }
+.sv-hint { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

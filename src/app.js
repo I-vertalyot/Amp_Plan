@@ -461,7 +461,7 @@
       '<li><span class="lcd">1</span><span>Create a venue. It starts on 192.168.1.0/24 with the LA Network Manager computer on .254.</span></li>' +
       '<li><span class="lcd">2</span><span>Add speakers: K2, Kara II, KS28, L2, A15, X8 and more. The amps are added for you.</span></li>' +
       '<li><span class="lcd">3</span><span>Check the amps and racks you need, fix anything flagged, then set the addresses on the units.</span></li></ul>' +
-      (S.readOnly ? '' : '<div class="row"><button class="btn btn-primary" data-act="new-venue">New venue</button><button class="btn" data-act="load-example">Open an example plan</button><button class="btn btn-quiet" data-act="import">Import a backup</button></div>') +
+      (S.readOnly ? '' : '<div class="row"><button class="btn btn-primary" data-act="new-venue">New venue</button><button class="btn" data-act="import-sv">From a Soundvision report</button><button class="btn" data-act="load-example">Open an example plan</button><button class="btn btn-quiet" data-act="import">Import a backup</button></div>') +
       '</div>';
   }
 
@@ -1893,6 +1893,7 @@
       if (document.visibilityState === 'hidden') Array.from(S.dirty).forEach((id) => flush(id));
     });
     $('#import-file').addEventListener('change', onImportFile);
+    $('#sv-file').addEventListener('change', onImportFile);
     $('#venue-q').addEventListener('input', (e) => { S.vq = e.target.value; renderRail(); });
   }
 
@@ -1901,6 +1902,7 @@
     'new-venue': () => openNewVenue(),
     'load-example': () => createVenue(C.makeExample()),
     'import': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); $('#import-file').click(); },
+    'import-sv': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); closeModal(); $('#sv-file').click(); },
     'export': () => openExport(),
     'dup-venue': () => duplicateVenue(),
     'del-venue': () => confirmDeleteVenue(),
@@ -2014,7 +2016,7 @@
   }
   function onChange(e) {
     const el = e.target;
-    if (el.closest('#modal-root') || el.id === 'import-file') return;
+    if (el.closest('#modal-root') || el.id === 'import-file' || el.id === 'sv-file') return;
     if (el.dataset.f) { devField(el, true); return; }
     if (el.dataset.nf) { netField(el); return; }
     if (el.dataset.sf) { speakerField(el); return; }
@@ -2231,7 +2233,8 @@
           ? '<label class="radio"><input type="radio" name="nv-from" value="copy"><span><b>Copy of another venue</b>Same network, zones, devices and addresses. Statuses go back to Planned.</span></label>' +
             '<div class="field"><label class="sr-only" for="nv-src">Venue to copy</label><select id="nv-src">' + others.map((o) => '<option value="' + esc(o.id) + '"' + (o.id === S.cur ? ' selected' : '') + '>' + esc(o.name) + '</option>').join('') + '</select></div>'
           : '') +
-        '</fieldset>',
+        '</fieldset>' +
+        '<p class="sv-hint">Have a Soundvision report? <button type="button" class="btn btn-quiet" data-act="import-sv">Build the plan from the report (PDF)</button></p>',
       actions: [
         { label: 'Cancel' },
         { label: 'Create venue', kind: 'primary', onClick: (m) => {
@@ -2249,6 +2252,7 @@
         } },
       ],
       onOpen: (m) => {
+        $('[data-act="import-sv"]', m).addEventListener('click', () => ACT['import-sv']());
         const src = $('#nv-src', m);
         if (src) src.addEventListener('change', () => { const r = $('input[value="copy"]', m); if (r) r.checked = true; });
       },
@@ -2911,10 +2915,173 @@
       navigator.clipboard.writeText(text).then(() => toast(okMsg || 'Copied.'), fallback);
     } catch (e) { fallback(); }
   }
+
+  // ---------------------------------------------------------------- PDF text (for Soundvision reports)
+  // A small reader for text-only PDFs such as Soundvision reports: inflates the page streams,
+  // follows the text operators and returns the text one line per row, top to bottom.
+  async function inflate(bytes) {
+    const ds = new DecompressionStream('deflate');
+    const out = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+    return new Uint8Array(out);
+  }
+  function pdfStrBytes(tok) {
+    if (tok[0] === '<') {
+      const h = tok.slice(1, -1).replace(/\s+/g, '');
+      const b = [];
+      for (let i = 0; i < h.length; i += 2) b.push(parseInt((h.substr(i, 2) + '0').slice(0, 2), 16));
+      return b;
+    }
+    const s = tok.slice(1, -1);
+    const b = [];
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c !== '\\') { b.push(c.charCodeAt(0) & 255); continue; }
+      const n = s[++i];
+      const esc = { n: 10, r: 13, t: 9, b: 8, f: 12 };
+      if (n in esc) b.push(esc[n]);
+      else if (/[0-7]/.test(n)) { let o = n; while (o.length < 3 && /[0-7]/.test(s[i + 1])) o += s[++i]; b.push(parseInt(o, 8) & 255); }
+      else if (n === '\r' || n === '\n') { if (n === '\r' && s[i + 1] === '\n') i++; }
+      else if (n != null) b.push(n.charCodeAt(0) & 255);
+    }
+    return b;
+  }
+  // two-byte fonts (Identity-H, as Soundvision writes them) carry UTF-16; others are single bytes
+  function pdfDecode(b, wide) {
+    if (wide && b.length % 2 === 0) { let s = ''; for (let i = 0; i < b.length; i += 2) s += String.fromCharCode((b[i] << 8) | b[i + 1]); return s; }
+    return String.fromCharCode.apply(null, b);
+  }
+  function pdfPageText(src, wideFonts) {
+    const re = /\((?:\\[\s\S]|[^\\)])*\)|<[0-9A-Fa-f\s]*>|\[|\]|\/[^\s\/\[\]()<>{}%]+|[-+]?(?:\d+\.?\d*|\.\d+)|[A-Za-z'"*]+\*?|%[^\r\n]*/g;
+    const items = [];
+    let st = [];
+    let tx = 0; let ty = 0; let lx = 0; let ly = 0; let TL = 0; let wide = false; let arr = null;
+    const show = (str) => { const t = pdfDecode(pdfStrBytes(str), wide); if (t.trim()) items.push({ x: tx, y: ty, t }); };
+    const nl = () => { ly -= TL; tx = lx; ty = ly; };
+    let m;
+    while ((m = re.exec(src))) {
+      const k = m[0];
+      if (k[0] === '%') continue;
+      if (k === '[') { arr = []; continue; }
+      if (k === ']') { st.push(arr || []); arr = null; continue; }
+      if (arr) { arr.push(k); continue; }
+      if (k[0] === '(' || k[0] === '<' || k[0] === '/' || /^[-+.\d]/.test(k)) { st.push(k); continue; }
+      const n = (i) => +st[st.length - i];
+      switch (k) {
+        case 'BT': tx = ty = lx = ly = 0; break;
+        case 'Td': lx += n(2); ly += n(1); tx = lx; ty = ly; break;
+        case 'TD': TL = -n(1); lx += n(2); ly += n(1); tx = lx; ty = ly; break;
+        case 'Tm': lx = n(2); ly = n(1); tx = lx; ty = ly; break;
+        case 'TL': TL = n(1); break;
+        case 'T*': nl(); break;
+        case 'Tf': wide = !!wideFonts[String(st[st.length - 2]).slice(1)]; break;
+        case 'Tj': show(st[st.length - 1]); break;
+        case "'": nl(); show(st[st.length - 1]); break;
+        case '"': nl(); show(st[st.length - 1]); break;
+        case 'TJ': {
+          const a = st[st.length - 1];
+          if (Array.isArray(a)) {
+            let t = '';
+            for (const p of a) {
+              if (p[0] === '(' || p[0] === '<') t += pdfDecode(pdfStrBytes(p), wide);
+              else if (+p < -200) t += ' ';
+            }
+            if (t.trim()) items.push({ x: tx, y: ty, t });
+          }
+          break;
+        }
+        default: break;
+      }
+      st = [];
+    }
+    items.sort((a, b) => b.y - a.y || a.x - b.x);
+    const rows = [];
+    for (const it of items) {
+      const r = rows[rows.length - 1];
+      if (r && Math.abs(r.y - it.y) < 2.5) r.list.push(it); else rows.push({ y: it.y, list: [it] });
+    }
+    return rows.map((r) => r.list.sort((a, b) => a.x - b.x).map((x) => x.t).join(' ')).join('\n');
+  }
+  async function pdfText(buf) {
+    const bytes = new Uint8Array(buf);
+    const raw = new TextDecoder('latin1').decode(bytes);
+    if (raw.slice(0, 5) !== '%PDF-') throw new Error('That file isn’t a PDF.');
+    if (/\/Encrypt\b/.test(raw)) throw new Error('This PDF is protected. Export the report again without a password.');
+    const objAt = (n) => { const m = new RegExp('(?:^|\\s)' + n + '\\s+0\\s+obj\\s*([\\s\\S]*?)endobj').exec(raw); return m ? m[1] : ''; };
+    // fonts with a two-byte encoding (Type0 / Identity-H), by resource name
+    const wideObjs = new Set();
+    const objRe = /(\d+)\s+0\s+obj\s*<<([\s\S]*?)>>\s*(?:endobj|stream)/g;
+    let m;
+    while ((m = objRe.exec(raw))) if (/\/Type0\b/.test(m[2])) wideObjs.add(m[1]);
+    const wideFonts = {};
+    const resRe = /\/(F[\w.-]*|[\w.-]+)\s+(\d+)\s+0\s+R/g;
+    for (const fm of raw.matchAll(/\/Font\s*<<([^>]*)>>/g)) { let r; while ((r = resRe.exec(fm[1]))) if (wideObjs.has(r[2])) wideFonts[r[1]] = true; }
+    const pages = [];
+    const sRe = /(\d+)\s+0\s+obj\s*<<([\s\S]*?)>>\s*stream\r?\n/g;
+    while ((m = sRe.exec(raw))) {
+      const dict = m[2];
+      if (/\/Subtype\s*\/(Image|XML|Form)|\/Type\s*\/(XObject|Metadata|CMap|EmbeddedFile|ObjStm|XRef)|\/Length1|\/FontFile/.test(dict)) continue;
+      const start = m.index + m[0].length;
+      let len = -1;
+      const lm = /\/Length\s+(\d+)(\s+0\s+R)?/.exec(dict);
+      if (lm) len = lm[2] ? parseInt(objAt(lm[1]), 10) : +lm[1];
+      if (!(len >= 0)) len = raw.indexOf('endstream', start) - start;
+      let data = bytes.subarray(start, start + len);
+      if (/\/FlateDecode/.test(dict)) { try { data = await inflate(data); } catch (e) { continue; } }
+      else if (/\/Filter/.test(dict)) continue;
+      const src = new TextDecoder('latin1').decode(data);
+      if (!/\bBT\b/.test(src)) continue;
+      pages.push(pdfPageText(src, wideFonts));
+    }
+    if (!pages.length) throw new Error('No text found in this PDF.');
+    return pages.join('\n');
+  }
+  // Read a Soundvision report (PDF, or its text saved as .txt) and return the parsed report.
+  async function readSoundvision(file) {
+    if (file.size > 30e6) throw new Error('That file is too large for a Soundvision report.');
+    const buf = await file.arrayBuffer();
+    const head = new TextDecoder('latin1').decode(new Uint8Array(buf, 0, Math.min(5, buf.byteLength)));
+    const text = head === '%PDF-' ? await pdfText(buf) : new TextDecoder('utf-8').decode(buf);
+    return C.parseSoundvision(text);
+  }
+
+  function svSummaryHtml(rep) {
+    const plan = C.soundvisionPlan(rep);
+    const rows = plan.map((z) => '<tr><th scope="row">' + esc(z.name) + '</th><td>' + z.speakers.map((sp) => {
+      const g = { model: sp.model, custom: sp.custom, qty: sp.qty, amp: C.driveOptions(sp.model)[0], per: 0 };
+      const n = C.ampsNeeded(g);
+      return esc(C.arrayText(g)) + ' <span class="muted">→ ' + esc(C.plural(n, g.amp + ' amp', g.amp + ' amps').replace(/^(\d+) /, '$1 × ')) + '</span>';
+    }).join('<br>') + '</td></tr>').join('');
+    return '<table class="sv-sum"><thead><tr><th scope="col">Zone</th><th scope="col">Speakers → amps</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+  async function importSoundvision(file) {
+    if (S.readOnly) return toast('You can view these plans but not change them.');
+    let rep;
+    try { rep = await readSoundvision(file); } catch (err) { toast((err && err.message) || 'Couldn’t read that report.'); return; }
+    openModal({
+      title: 'Import Soundvision report',
+      wide: true,
+      body: '<p>Each Soundvision group becomes a zone, split into L and R when its sources are named left and right. The amps L-Acoustics specifies are added, put in racks and given addresses. You can change everything afterwards.</p>' +
+        '<div class="form-grid"><div class="field span2"><label for="sv-name">Show or venue name</label><input id="sv-name" maxlength="120" autocomplete="off" value="' + esc(rep.file || 'Soundvision import') + '"></div>' +
+        '<div class="field"><label for="sv-date">Show date <em>optional</em></label><input id="sv-date" type="date"></div>' +
+        '<div class="field"><label for="sv-city">Venue <em>optional</em></label><input id="sv-city" maxlength="120" placeholder="Hall, city" autocomplete="off"></div></div>' +
+        svSummaryHtml(rep),
+      actions: [
+        { label: 'Cancel' },
+        { label: 'Create venue', kind: 'primary', onClick: (m) => {
+          const date = $('#sv-date', m).value;
+          const v = C.venueFromSoundvision(rep, { name: $('#sv-name', m).value.trim() || rep.file || 'Soundvision import', city: $('#sv-city', m).value.trim(), date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '' });
+          createVenue(v);
+          toast('Created from the Soundvision report: ' + C.plural(v.devices.length, 'amp') + ' in ' + C.plural(v.racks.length, 'rack') + '.');
+        } },
+      ],
+    });
+  }
+  function isSvFile(f) { return /\.(pdf|txt)$/i.test(f.name) || /pdf|text\/plain/.test(f.type || ''); }
   function onImportFile(e) {
     const f = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!f) return;
+    if (isSvFile(f)) { importSoundvision(f); return; }
     if (f.size > 5e6) { toast('That file is too large for a planner backup.'); return; }
     const r = new FileReader();
     r.onload = () => {

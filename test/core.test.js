@@ -482,4 +482,28 @@ t('plan grid: one cell per amp, counted from each side edge', () => {
   assert.strictEqual(C.placeOnGrid(v, 'r:nope', 'L', 0, 0, 4), false);
 });
 
+t('Soundvision report becomes zones, speakers, amps and racks', () => {
+  const text = ['Soundvision', 'File name: Arena - Show.xmlp', '1. Group: All', '1. Group: Main',
+    '1. Source: L2 Left', 'Position (X; Y; Z, m): 8; 0; 8.5', '#1 L2 4 8.5 7.31 55/55 | 55/55', '#2 L2D -6 7.3 6.11 55/55',
+    '2. Source: L2 Right', 'Position (X; Y; Z, m): -8; 0; 8.5', '#1 L2 4 8.5 7.31 55/55', '#2 L2D -6 7.3 6.11 55/55',
+    '2. Group: Subs', '1. Source: KS28 - 1', '#1 KS28 0 1.34 0', '#2 KS28_C 0 1.34 0', '#3 KS28 0 1.34 0',
+    '3. Group: FF', '1. Source: KARA II 1', '#2 KARA II 0 0 1.84 1.59 55/55', '#1 KARA II 0 1.59 1.34 55/55',
+    '2. Source: Odd box', '#1 MYSTERY 0 1 0'].join('\n');
+  const rep = C.parseSoundvision(text);
+  assert.strictEqual(rep.file, 'Arena - Show');
+  assert.deepStrictEqual(rep.groups.map((g) => g.name), ['Main', 'Subs', 'FF']);
+  const plan = C.soundvisionPlan(rep);
+  assert.deepStrictEqual(plan.map((z) => z.name), ['Main L', 'Main R', 'Subs', 'FF']);
+  assert.deepStrictEqual(plan[0].speakers.map((s) => [s.model, s.qty]), [['L2', 2]]);
+  assert.deepStrictEqual(plan[2].speakers.map((s) => [s.model, s.qty]), [['KS28', 3]]);
+  assert.deepStrictEqual(plan[3].speakers.map((s) => [s.model, s.custom, s.qty]), [['Kara II', '', 2], ['Custom', 'MYSTERY', 1]]);
+  const v = C.venueFromSoundvision(rep);
+  assert.strictEqual(v.name, 'Arena - Show');
+  assert.strictEqual(v.zones[0].side, 'L');
+  assert.strictEqual(v.zones[1].side, 'R');
+  assert.strictEqual(v.devices.filter((d) => d.model === 'LA7.16').length, 4);
+  assert.ok(v.devices.every((d) => d.rack && d.ip), 'every amp racked and addressed');
+  assert.throws(() => C.parseSoundvision('hello'), /Soundvision report/);
+});
+
 console.log('\nall', n, 'tests passed');
