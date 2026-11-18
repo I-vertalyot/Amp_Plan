@@ -507,6 +507,32 @@
     return true;
   }
 
+  // Move several racks / single amps at once: moves = [{ key, side, c, r }]. The group keeps its shape;
+  // if any of it would land on something that stays put, the whole group slides down until it fits.
+  function placeGroup(v, moves, half) {
+    half = Math.max(1, half || GRID_COLS / 2);
+    const lay = gridLayout(v, half);
+    for (const it of lay) (it.rack || it.dev).pos = { c: it.c, r: it.r, v: 2 };
+    const keys = new Set(moves.map((m) => m.key));
+    const items = [];
+    for (const m of moves) {
+      if (SIDES.indexOf(m.side) < 0) continue;
+      const me = lay.find((it) => it.key === m.key);
+      if (!me) continue;
+      items.push({ obj: me.rack || me.dev, side: m.side, c: Math.max(0, Math.min(half - 1, Math.round(m.c))), r: Math.max(0, Math.round(m.r)), h: me.h });
+    }
+    if (!items.length) return false;
+    // squeezed against an edge, two of the group can land in one column: stack them
+    items.sort((a, b) => a.r - b.r);
+    items.forEach((a, i) => { while (items.slice(0, i).some((b) => b.side === a.side && b.c === a.c && a.r < b.r + b.h && b.r < a.r + a.h)) a.r++; });
+    const others = lay.filter((it) => !keys.has(it.key));
+    const hit = (dr) => items.some((a) => others.some((p) => p.side === a.side && p.c === a.c && a.r + dr < p.r + p.h && p.r < a.r + dr + a.h));
+    let dr = 0;
+    while (hit(dr) && dr < 2000) dr++;
+    for (const a of items) { a.obj.pos = { c: a.c, r: a.r + dr, v: 2 }; a.obj.side = a.side; }
+    return true;
+  }
+
   // ---- the plan's drawing order: racks and single amps (amps outside racks) share one order per side
   function singleSide(v, d) {
     if (SIDES.indexOf(d.side) >= 0) return d.side;
@@ -1560,7 +1586,7 @@
     nextIndex, syncGroup, removeGroup, speakerPlan,
     SIDES, SIDE_LABEL, RACK_MODEL, DEFAULT_RACK_TYPE, ZONE_TEXT, inferSide, sideFor, isAmpModel, rackById, moveRack, moveItem, planItems, singleSide, GRID_COLS, gridLayout, placeOnGrid, rackSlots, rackModel, nextRackName, addRack, addRackWithDevices,
     placeDevice, removeRack, resizeRack, packRacks, presetOf, slotLabel, rackLabel, planSvg,
-    parseSoundvision, soundvisionPlan, venueFromSoundvision, svModel,
+    parseSoundvision, soundvisionPlan, venueFromSoundvision, svModel, placeGroup,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.IPCore = api;

@@ -1213,3 +1213,11 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .sv-sum thead th { border-top: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .sv-sum .muted { opacity: .7; }
 .sv-hint { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* moving several racks at once */
+.pcell.psel { outline: 3px solid #FCA311; outline-offset: 3px; border-radius: 10px; }
+.pcell.grp-dragging { opacity: .4; }
+.pband { position: absolute; border: 1.5px dashed #14213D; background: rgba(252, 163, 17, .12); pointer-events: none; z-index: 4; }
+.psizer { user-select: none; -webkit-user-select: none; }
+.psel-bar { text-align: center; font-size: 12px; margin: -2px 0 8px; opacity: .8; min-height: 18px; }
+.psel-bar .linkish { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }

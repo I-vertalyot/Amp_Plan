@@ -23,6 +23,7 @@
   const savePrefs = () => lsSet(LS_PREFS, JSON.stringify(prefs));
 
   const S = {
+    psel: new Set(), // racks / single amps picked on the plan, as "r:<id>" / "d:<id>"
     mode: 'init', db: null, user: null, canWrite: null, dl: undefined, unsub: null,
     readOnly: false, loaded: false, confirmed: false, slow: false, error: '', note: '', saveError: '',
     venues: [], cur: '', tab: 'speakers', open: {}, devView: prefs.devView === 'list' ? 'list' : 'racks', drag: null, zone: 'all', q: '', vq: '', sel: new Set(), mapNet: 'pri',
@@ -1082,7 +1083,7 @@
     // left racks count from the left edge, right racks from the right edge (so each side hugs its edge)
     const leftPx = (it) => (it.side === 'L' ? GRID_PAD + it.c * g.cw : g.W - GRID_PAD - it.c * g.cw - 128 * g.z);
     // only racks and the squares scale; the work area keeps its width, so zooming out opens up columns
-    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" style="left:' + leftPx(it) + 'px;top:' + (GRID_PAD + it.r * g.ch) + 'px;width:' + 128 * g.z + 'px;height:' + (it.h * CELL_H - 8) * g.z + 'px">' +
+    const items = lay.map((it) => '<div class="pcell' + (S.psel.has(it.key) ? ' psel' : '') + '" data-key="' + esc(it.key) + '" style="left:' + leftPx(it) + 'px;top:' + (GRID_PAD + it.r * g.ch) + 'px;width:' + 128 * g.z + 'px;height:' + (it.h * CELL_H - 8) * g.z + 'px">' +
       '<div class="pcell-in" style="zoom:' + g.z + ';height:' + (it.h * CELL_H - 8) + 'px">' + (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div></div>').join('');
     const adds = (sd) => (ro ? '' : '<details class="add-menu add-' + sd + '"><summary class="btn-mini">+ Add</summary><div class="add-pop" role="menu">' +
       '<button type="button" role="menuitem" data-act="amp-new" data-side="' + sd + '">Amp in a rack</button>' +
@@ -1093,13 +1094,15 @@
       '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="+1" aria-label="Zoom in">+</button>' +
       '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen (Ctrl + mouse wheel zooms too)">Fit</button></div>';
     const halfW = g.half * g.cw;
-    return '<div class="pgridwrap">' + zoomBar +
+    const tidy = new Set(lay.map((x) => x.key));
+    S.psel.forEach((k) => { if (!tidy.has(k)) S.psel.delete(k); });
+    return '<div class="pgridwrap">' + zoomBar + '<p class="psel-bar" aria-live="polite">' + selBarText() + '</p>' +
       '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
       '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" data-w="' + g.W + '" data-z="' + g.z + '" style="height:' + CANVAS_H + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
       // the work area keeps one size whatever the zoom; only the racks and squares inside it scale.
       // If racks reach past the bottom, the area scrolls instead of growing.
       '<div class="psizer" style="height:' + Math.max(CANVAS_H - 2, (Math.max(0, ...lay.map((x) => x.r + x.h)) + 1) * g.ch + 2 * GRID_PAD) + 'px">' +
-      '<div class="ptint ptint-L" style="width:' + halfW + 'px"></div><div class="ptint ptint-R" style="width:' + halfW + 'px"></div>' + deck + items + '<div class="pghost" hidden></div></div></div>' +
+      '<div class="ptint ptint-L" style="width:' + halfW + 'px"></div><div class="ptint ptint-R" style="width:' + halfW + 'px"></div>' + deck + items + '<div class="pghost" hidden></div><div class="pband" hidden></div></div></div>' +
       '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div>';
   }
   // after drawing: if the card's width changed, draw again with the right number of columns
@@ -1468,6 +1471,12 @@
     const holder = (rk || one || (sl && sl.closest('.psingle'))) ;
     if (holder) { const b = holder.getBoundingClientRect(); S.grab = { dx: e.clientX - b.left, dy: e.clientY - b.top }; }
     else if (sl) { const b = sl.getBoundingClientRect(); S.grab = { dx: Math.min(60 * zoomOf(), e.clientX - b.left), dy: e.clientY - b.top + 2 * CELL_H * zoomOf() }; }
+    S.dragGroup = null;
+    const pc = holder && (rk || one || (sl && sl.closest('.psingle'))) && holder.closest('.pcell');
+    if (pc && !S.readOnly && S.psel.size > 1 && S.psel.has(pc.dataset.key)) {
+      S.dragGroup = { key: pc.dataset.key, keys: Array.from(S.psel) };
+      $$('.pcell.psel').forEach((x) => x.classList.add('grp-dragging'));
+    }
     if (rk && !S.readOnly) {
       S.dragRack = rk.dataset.rid;
       try { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', 'rack'); } catch (x) { /* older browsers */ }
@@ -1507,6 +1516,127 @@
     const r = Math.max(0, Math.round((e.clientY - b.top + canvas.scrollTop - g.dy - GRID_PAD) / ch));
     return { side, c, r, top: GRID_PAD + r * ch, left, cw, ch, half, cols };
   }
+  // ---- several racks / single amps at once: Shift+click or draw a box round them, then drag one
+  function selBarText() {
+    const n = S.psel.size;
+    if (S.readOnly) return '';
+    if (!n) return 'Shift+click racks, or draw a box round them, to move several at once.';
+    return n + ' selected · drag one to move them all · <button type="button" class="linkish" data-act="psel-clear">Clear</button>';
+  }
+  function updateSel() {
+    $$('.pcanvas .pcell').forEach((x) => x.classList.toggle('psel', S.psel.has(x.dataset.key)));
+    const bar = $('.psel-bar');
+    if (bar) bar.innerHTML = selBarText();
+  }
+  // where each item of the dragged group lands, keeping the group's shape (columns count across both sides)
+  function groupTargets(v, grp, cell) {
+    const half = cell.half;
+    const lay = C.gridLayout(v, half);
+    const at = new Map(lay.map((it) => [it.key, it]));
+    const me = at.get(grp.key);
+    if (!me) return [];
+    const gx = (side, c) => (side === 'L' ? c : 2 * half - 1 - c);
+    const dx = gx(cell.side, cell.c) - gx(me.side, me.c);
+    const dr = cell.r - me.r;
+    return grp.keys.map((k) => at.get(k)).filter(Boolean).map((it) => {
+      const x = Math.max(0, Math.min(2 * half - 1, gx(it.side, it.c) + dx));
+      const side = x < half ? 'L' : 'R';
+      return { key: it.key, side, c: side === 'L' ? x : 2 * half - 1 - x, r: Math.max(0, it.r + dr), h: it.h };
+    });
+  }
+  function showGroupGhosts(canvas, cell) {
+    const v = cur();
+    if (!v) return;
+    const box = canvas.querySelector('.psizer');
+    const W = +canvas.dataset.w;
+    const z = +canvas.dataset.z;
+    const list = groupTargets(v, S.dragGroup, cell);
+    const have = $$('.pghost-x', box);
+    list.forEach((t, i) => {
+      let gh = have[i];
+      if (!gh) { gh = document.createElement('div'); gh.className = 'pghost pghost-x'; box.appendChild(gh); }
+      gh.style.left = (t.side === 'L' ? GRID_PAD + t.c * cell.cw : W - GRID_PAD - t.c * cell.cw - 128 * z) + 'px';
+      gh.style.top = GRID_PAD + t.r * cell.ch + 'px';
+      gh.style.width = 128 * z + 'px';
+      gh.style.height = (t.h * CELL_H - 8) * z + 'px';
+    });
+    have.slice(list.length).forEach((g) => g.remove());
+  }
+  function groupDrop(grp, cell, copy) {
+    const v = cur();
+    if (!v || S.readOnly) return;
+    let moves = groupTargets(v, grp, cell);
+    if (!moves.length) return;
+    pushUndo(v, copy ? 'group-copy' : 'group-move');
+    if (copy) {
+      const amps = moves.reduce((n, m) => n + (m.key[0] === 'r' ? v.devices.filter((d) => d.rack === m.key.slice(2)).length : 1), 0);
+      if (v.devices.length + amps > C.MAX_DEVICES) { S.undo.pop(); toast('A venue holds up to ' + C.MAX_DEVICES + ' devices.'); return; }
+      moves = moves.map((m) => {
+        if (m.key[0] === 'r') { const r = C.rackById(v, m.key.slice(2)); return r ? Object.assign({}, m, { key: 'r:' + copyRack(v, r).id }) : null; }
+        const d = v.devices.find((x) => x.id === m.key.slice(2));
+        return d ? Object.assign({}, m, { key: 'd:' + copyAmp(v, d).id }) : null;
+      }).filter(Boolean);
+      S.psel = new Set(moves.map((m) => m.key));
+    }
+    C.placeGroup(v, moves, cell.half);
+    touch(v);
+    render();
+    if (copy) toast('Copied ' + C.plural(moves.length, 'item') + '.', undoAction());
+  }
+  // drawing a box on the empty plan selects the racks and amps it touches
+  function onBandDown(e) {
+    if (e.button !== 0 || S.readOnly) return;
+    const sizer = e.target.closest && e.target.closest('.pcanvas .psizer');
+    if (!sizer || e.target.closest('.pcell, button, a, input, select, details')) return;
+    const b0 = sizer.getBoundingClientRect();
+    const x0 = e.clientX - b0.left;
+    const y0 = e.clientY - b0.top;
+    const band = sizer.querySelector('.pband');
+    const add = e.shiftKey || e.ctrlKey || e.metaKey;
+    const start = add ? new Set(S.psel) : new Set();
+    let moved = false;
+    const hits = (x1, y1) => {
+      const L = Math.min(x0, x1); const T = Math.min(y0, y1); const R = Math.max(x0, x1); const B = Math.max(y0, y1);
+      return $$('.pcell', sizer).filter((c) => c.offsetLeft < R && c.offsetLeft + c.offsetWidth > L && c.offsetTop < B && c.offsetTop + c.offsetHeight > T).map((c) => c.dataset.key);
+    };
+    const move = (ev) => {
+      const b = sizer.getBoundingClientRect();
+      const x1 = ev.clientX - b.left;
+      const y1 = ev.clientY - b.top;
+      if (!moved && Math.abs(x1 - x0) + Math.abs(y1 - y0) < 5) return;
+      moved = true;
+      band.hidden = false;
+      band.style.left = Math.min(x0, x1) + 'px';
+      band.style.top = Math.min(y0, y1) + 'px';
+      band.style.width = Math.abs(x1 - x0) + 'px';
+      band.style.height = Math.abs(y1 - y0) + 'px';
+      S.psel = new Set(start);
+      hits(x1, y1).forEach((k) => S.psel.add(k));
+      updateSel();
+    };
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      band.hidden = true;
+      if (!moved && !add && S.psel.size) { S.psel.clear(); updateSel(); }
+    };
+    e.preventDefault();
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  }
+  // Shift+click a rack or a single amp adds it to the selection (or takes it out)
+  function onSelClick(e) {
+    if (!e.shiftKey || S.readOnly) return;
+    const pc = e.target.closest && e.target.closest('.pcanvas .pcell');
+    if (!pc || e.target.closest('.prack-del, button.prack-del')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const k = pc.dataset.key;
+    if (S.psel.has(k)) S.psel.delete(k); else S.psel.add(k);
+    updateSel();
+  }
   function dragRows() {
     const v = cur();
     if (S.dragRack) { const r = v && C.rackById(v, S.dragRack); return r ? r.size + 2 : 5; }
@@ -1515,6 +1645,7 @@
   function gridDrop(e, canvas) {
     const cell = gridCell(e, canvas);
     const copy = !!(S.dragCopy || wantsCopy(e));
+    if (S.dragGroup) { const grp = S.dragGroup; onDragEnd(); groupDrop(grp, cell, copy); return; }
     const rackId = S.dragRack;
     const devId = S.drag;
     onDragEnd();
@@ -1551,6 +1682,7 @@
       try { e.dataTransfer.dropEffect = S.dragCopy ? 'copy' : 'move'; } catch (x) { /* ignore */ }
       $$('.drop-hover, .rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('drop-hover', 'rk-before', 'rk-after', 'rk-end'));
       const cell = gridCell(e, canvas);
+      if (S.dragGroup) { showGroupGhosts(canvas, cell); return; }
       const gh = canvas.querySelector('.pghost');
       if (gh) { gh.hidden = false; gh.style.left = cell.left + 'px'; gh.style.top = cell.top + 'px'; gh.style.width = 128 * (cell.cw / CELL_W) + 'px'; gh.style.height = (dragRows() * CELL_H - 8) * (cell.ch / CELL_H) + 'px'; }
       return;
@@ -1590,6 +1722,9 @@
     S.dragCopy = false;
     document.body.classList.remove('drag-copy');
     $$('.pghost').forEach((g) => { g.hidden = true; });
+    $$('.pghost-x').forEach((g) => g.remove());
+    $$('.grp-dragging').forEach((x) => x.classList.remove('grp-dragging'));
+    S.dragGroup = null;
     clearRackMarks();
     $$('.dragging, .drop-hover').forEach((x) => x.classList.remove('dragging', 'drop-hover'));
   }
@@ -1870,6 +2005,8 @@
     document.addEventListener('mouseout', onTipOut);
     document.addEventListener('mousemove', onTipMove);
     document.addEventListener('dragstart', onDragStart);
+    document.addEventListener('pointerdown', onBandDown);
+    document.addEventListener('click', onSelClick, true);
     // remember which folded sections are open, so a redraw keeps them open
     document.addEventListener('toggle', (e) => { const d = e.target; if (d && d.dataset && d.dataset.sec) S.open[d.dataset.sec] = d.open; }, true);
     let rsz = null;
@@ -1902,6 +2039,7 @@
     'new-venue': () => openNewVenue(),
     'load-example': () => createVenue(C.makeExample()),
     'import': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); $('#import-file').click(); },
+    'psel-clear': () => { S.psel.clear(); updateSel(); },
     'import-sv': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); closeModal(); $('#sv-file').click(); },
     'export': () => openExport(),
     'dup-venue': () => duplicateVenue(),
@@ -2030,6 +2168,7 @@
   function onKey(e) {
     if (e.key === 'Escape') {
       if (S.modal) { closeModal(); return; }
+      if (S.psel.size) { S.psel.clear(); updateSel(); return; }
       document.body.classList.remove('rail-open');
       return;
     }
@@ -2204,6 +2343,7 @@
     prefs.last = id;
     savePrefs();
     S.sel.clear();
+    S.psel.clear();
     S.zone = 'all';
     S.q = '';
     if (!fromHash && decodeURIComponent(location.hash.slice(1)) !== id) { try { location.hash = id; } catch (e) { /* frame may refuse */ } }
