@@ -1259,3 +1259,8 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .pcanvas .psingle .prack-name small { display: none; }
 .pcanvas .pslot .ps-lab { font-weight: 700; }
 .pcanvas .prack-name small { color: #8a8f93 !important; }
+
+/* zoom buttons under the plan, centred between the two + Add menus */
+.pgrid-foot { align-items: center; }
+.pgrid-foot .pzoom { margin: 6px 0 0; flex: 1; }
+.pzoom .pimg-btn { margin-left: 0; }

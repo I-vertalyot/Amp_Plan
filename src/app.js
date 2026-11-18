@@ -1107,19 +1107,20 @@
     const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the racks"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
       '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(g.z * 100) + '%</button>' +
       '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="+1" aria-label="Zoom in">+</button>' +
-      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen (Ctrl + mouse wheel zooms too)">Fit</button>' +
-      '<button type="button" class="btn-mini pimg-btn" data-act="plan-image" title="Save the amp plan as a .png picture">Save image</button></div>';
+      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen (Ctrl + mouse wheel zooms too)">Fit</button></div>';
+    // Save image stays on top; the zoom buttons sit under the plan, between the + Add menus
+    const saveBar = '<div class="pzoom"><button type="button" class="btn-mini pimg-btn" data-act="plan-image" title="Save the amp plan as a .png picture">Save image</button></div>';
     const halfW = g.half * g.cw;
     const tidy = new Set(lay.map((x) => x.key));
     S.psel.forEach((k) => { if (!tidy.has(k)) S.psel.delete(k); });
-    return '<div class="pgridwrap">' + zoomBar + '<p class="psel-bar" aria-live="polite">' + selBarText() + '</p>' +
+    return '<div class="pgridwrap">' + saveBar + '<p class="psel-bar" aria-live="polite">' + selBarText() + '</p>' +
       '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
       '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" data-w="' + g.W + '" data-z="' + g.z + '" style="height:' + CANVAS_H + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
       // the work area keeps one size whatever the zoom; only the racks and squares inside it scale.
       // If racks reach past the bottom, the area scrolls instead of growing.
       '<div class="psizer" style="height:' + Math.max(CANVAS_H - 2, (Math.max(0, ...lay.map((x) => x.r + x.h)) + 1) * g.ch + 2 * GRID_PAD) + 'px">' +
       '<div class="ptint ptint-L"></div><div class="ptint ptint-R"></div>' + deck + items + '<div class="pghost" hidden></div><div class="pband" hidden></div></div></div>' +
-      '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div>';
+      '<div class="pgrid-foot">' + (adds('L') || '<span></span>') + zoomBar + (adds('R') || '<span></span>') + '</div></div>';
   }
   // after drawing: if the card's width changed, draw again with the right number of columns
   function syncGridWidth() {
