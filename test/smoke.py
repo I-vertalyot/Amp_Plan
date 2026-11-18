@@ -89,7 +89,7 @@ def run(p, label, mock, dark=False):
     page.click('#tab-devices')
     page.wait_for_selector('.plan')
     print(label, 'grid cells:', page.locator('.pcell').count(), '| layout picker gone:', page.locator('[data-act="plan-layout"]').count() == 0)
-    rack = lambda name: page.locator('.pcell', has_text=name).first
+    rack = lambda name: page.locator('.pcell', has=page.locator('.prack[data-name="' + name + '"]')).first
     page.screenshot(path=str(SHOTS / f'{label}-3a-racks.png'), full_page=True)
     racks_txt = lambda: [' | '.join(page.locator('.prack:not(.psingle)').nth(k).inner_text().split('\n')) for k in range(page.locator('.prack:not(.psingle)').count())]
     print(label, 'racks:', racks_txt())
