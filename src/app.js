@@ -19,6 +19,36 @@
   const prefs = Object.assign({ sep: '', last: '', devView: 'racks' }, safeJson(lsGet(LS_PREFS)) || {});
   // one look: the beige 90s office (styles under [data-skin="retro"])
   document.documentElement.dataset.skin = 'retro';
+  // ink-illustration themes on top of it, picked from the ⋮ menu (styles under [data-theme="…"])
+  const THEMES = [
+    { id: 'classic', name: 'Classic', note: 'The beige office look', fonts: '' },
+    { id: 'snow', name: 'Snowfall night', note: 'White ink on black, falling snow', fonts: 'Gaegu:wght@400;700' },
+    { id: 'paper', name: 'Paper and ink', note: 'Black ink on paper, stipple', fonts: 'Patrick+Hand' },
+    { id: 'woodcut', name: 'Woodcut', note: 'Heavy black lines, cream type', fonts: 'Cabin+Sketch:wght@700&family=Courier+Prime:wght@400;700' },
+    { id: 'birch', name: 'Birch bark', note: 'Racks edged like tree trunks', fonts: 'Kalam:wght@400;700' },
+    { id: 'knit', name: 'Knit beanie', note: 'Chunky rounded outlines', fonts: 'Short+Stack' },
+    { id: 'comic', name: 'Comic panels', note: 'Thick panels, halftone dots', fonts: 'Bangers&family=Comic+Neue:wght@400;700' },
+    { id: 'orange', name: 'Ink and orange', note: 'Black and white with orange', fonts: 'Architects+Daughter' },
+    { id: 'navy', name: 'Midnight navy', note: 'Navy night, white ink, orange', fonts: 'Gochi+Hand&family=Gaegu:wght@400;700' },
+    { id: 'sketch', name: 'Sketchbook', note: 'Graph paper, pencil, tape', fonts: 'Caveat:wght@400;700' },
+    { id: 'quiet', name: 'Quiet ink', note: 'Thin lines, lots of white', fonts: 'Gaegu:wght@700&family=Delius' },
+  ];
+  function applyTheme(id) {
+    const t = THEMES.find((x) => x.id === id) || THEMES[0];
+    const root = document.documentElement;
+    if (t.id === 'classic') { delete root.dataset.theme; delete root.dataset.ink; } else { root.dataset.theme = t.id; root.dataset.ink = '1'; }
+    if (t.fonts && !document.getElementById('font-' + t.id)) {
+      try {
+        const l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.id = 'font-' + t.id;
+        l.href = 'https://fonts.googleapis.com/css2?family=' + t.fonts + '&display=swap';
+        document.head.appendChild(l);
+      } catch (e) { /* offline: the theme falls back to a handwriting font on the device */ }
+    }
+    return t;
+  }
+  applyTheme(prefs.theme);
   prefs.cols = Object.assign({}, DEFAULT_COLS, prefs.cols || {});
   const savePrefs = () => lsSet(LS_PREFS, JSON.stringify(prefs));
 
@@ -482,6 +512,7 @@
       // Export, Duplicate and Delete live in one ⋮ menu
       '<div class="vhead-actions"><details class="add-menu more-menu"><summary class="btn more-btn" aria-label="More actions for this venue" title="More">' +
       '<svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2.5" r="1.6"/><circle cx="2" cy="8" r="1.6"/><circle cx="2" cy="13.5" r="1.6"/></svg></summary><div class="add-pop" role="menu">' +
+      '<button type="button" role="menuitem" data-act="theme-pick">Theme: ' + esc((THEMES.find((x) => x.id === (prefs.theme || 'classic')) || THEMES[0]).name) + '…</button>' +
       '<button type="button" role="menuitem" data-act="net-toggle">' + (prefs.netOpen ? 'Hide network settings' : 'Network settings…') + '</button>' +
       '<button type="button" role="menuitem" data-act="export">Export…</button>' +
       (S.readOnly ? '' : '<button type="button" role="menuitem" data-act="dup-venue">Duplicate venue</button><button type="button" role="menuitem" class="danger" data-act="del-venue">Delete venue</button>') +
@@ -963,7 +994,7 @@
     if (L === 'night') return '<i class="pf-stripe" aria-hidden="true"></i><span class="pn-top"><b>' + esc(pre) + '</b><span class="pn-st st-' + esc(d.status) + '"><i aria-hidden="true"></i>' + esc(C.STATUS_LABEL[d.status] || '') + '</span></span><span class="pn-ip">' + (h != null ? '.' + h : '—') + '</span>';
     // compact rack style: zone stripe on the left (CSS), label, short model on the right
     const short = String(C.modelOf(d.model).label).replace(/^LA/, '');
-    return '<span class="ps-lab">' + esc(C.slotLabel(v, d, a.info)) + '</span><small class="ps-m">' + esc(short) + '</small>';
+    return '<i class="ps-z" aria-hidden="true"></i><span class="ps-lab">' + esc(C.slotLabel(v, d, a.info)) + '</span><small class="ps-m">' + esc(short) + '</small>';
   }
   function ampChip(v, a, d, extra) {
     const L = layoutOf();
@@ -974,7 +1005,7 @@
     const vars = '--zc:var(--z' + c + ');--zi:var(--z' + (c === 3 ? '3' : '') + '-ink)';
     const paint = vars;
     return '<div class="pslot' + (sev === 'error' ? ' p-err' : sev === 'warn' ? ' p-warn' : '') + '" role="button" tabindex="0"' + (S.readOnly ? '' : ' draggable="true"') +
-      ' data-act="amp-edit" data-dev="' + esc(d.id) + '"' + (extra || '') + ' style="' + paint + '" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + slotInner(v, a, d, L) + '</div>';
+      ' data-act="amp-edit" data-dev="' + esc(d.id) + '" data-z="' + c + '"' + (extra || '') + ' style="' + paint + '" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + slotInner(v, a, d, L) + '</div>';
   }
   const rackAttrs = (r) => ' data-rid="' + esc(r.id) + '" data-name="' + esc(r.name) + '" aria-label="' + esc(r.name) + '"' + (S.readOnly ? '' : ' draggable="true" title="Drag to move ' + esc(r.name) + '"');
   function rackBoxHtml(v, a, r) {
@@ -1012,7 +1043,7 @@
     const amps = v.devices.filter((d) => C.isAmpModel(d.model));
     const loose = amps.filter((d) => !C.rackById(v, d.rack));
     const noZone = amps.some((d) => !v.zones.some((z) => z.id === d.zone));
-    const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') +
+    const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" data-z="' + z.color + '" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') +
       (noZone ? '<li><span class="sw" style="background:var(--z8)"></span>No zone</li>' : '') + '</ul>';
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
     const head = '<div class="plan-head"><p class="plan-sub">' + esc(sub) + '</p></div>';
@@ -2071,6 +2102,7 @@
       const base = (v.name || 'venue').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'venue';
       svgToPng(C.planSvg(v, planShot())).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
     },
+    'theme-pick': () => openThemePicker(),
     'psel-clear': () => { S.psel.clear(); updateSel(); },
     'import-sv': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); closeModal(); $('#sv-file').click(); },
     'export': () => openExport(),
@@ -2389,6 +2421,26 @@
     S.venues.push(v);
     touch(v, true);
     openVenue(v.id);
+  }
+  function openThemePicker() {
+    const curId = prefs.theme || 'classic';
+    openModal({
+      title: 'Theme',
+      wide: true,
+      body: '<p class="muted">Changes how the app looks on this device. Your plans stay the same.</p><div class="theme-grid">' + THEMES.map((t) =>
+        '<button type="button" class="theme-opt' + (t.id === curId ? ' is-on' : '') + '" data-theme-id="' + t.id + '" aria-pressed="' + (t.id === curId) + '">' +
+        '<span class="theme-sw theme-sw-' + t.id + '" aria-hidden="true"><i></i><i></i><i></i></span><b>' + esc(t.name) + '</b><small>' + esc(t.note) + '</small></button>').join('') + '</div>',
+      actions: [{ label: 'Done', kind: 'primary' }],
+      onOpen: (m) => m.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-theme-id]');
+        if (!b) return;
+        prefs.theme = b.dataset.themeId;
+        savePrefs();
+        applyTheme(prefs.theme);
+        $$('.theme-opt', m).forEach((x) => { const on = x === b; x.classList.toggle('is-on', on); x.setAttribute('aria-pressed', String(on)); });
+        render();
+      }),
+    });
   }
   function openNewVenue() {
     if (S.readOnly) return;

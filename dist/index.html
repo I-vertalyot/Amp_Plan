@@ -1284,6 +1284,146 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .pgrid-foot .pzoom { margin: 6px 0 0; flex: 1; }
 .pzoom .pimg-btn { margin-left: 0; }
 
+/* =====================================================================================
+   Ink-illustration themes (⋮ menu → Theme). Set on <html> as data-theme="…" plus data-ink.
+   Each theme sets the --t-* values; the shared rules below draw everything with them:
+   hand-drawn (wobbly) outlines, handwriting fonts, paper or night grounds with speckles.
+   ===================================================================================== */
+:root[data-theme="snow"]   { --t-bg:#0e0e0e; --t-ink:#f3f0e8; --t-paper:#151515; --t-mut:#c4bfb4; --t-lt:#171717; --t-rt:#1d1d1d; --t-rack:#0e0e0e; --t-row:#1b1b1b; --t-rowink:#f3f0e8; --t-acc:#f3f0e8; --t-accink:#0e0e0e; --t-head:'Gaegu',cursive; --t-body:'Gaegu',cursive; --t-headw:700; --t-sw:2.5px; --t-rad:6px; --t-z:pattern; --t-dark:1;
+  --t-tex: radial-gradient(rgba(243,240,232,.22) 1.2px, transparent 1.6px), radial-gradient(rgba(243,240,232,.16) .8px, transparent 1.2px); --t-texsize: 46px 52px, 23px 29px; }
+:root[data-theme="paper"]  { --t-bg:#fbfaf5; --t-ink:#141414; --t-paper:#ffffff; --t-mut:#55524c; --t-lt:#f4f2ec; --t-rt:#ffffff; --t-rack:#ffffff; --t-row:#ffffff; --t-rowink:#141414; --t-acc:#141414; --t-accink:#fbfaf5; --t-head:'Patrick Hand',cursive; --t-body:'Patrick Hand',cursive; --t-headw:400; --t-sw:2.5px; --t-rad:4px;
+  --t-tex: radial-gradient(rgba(20,20,20,.07) .7px, transparent 1px); --t-texsize: 9px 11px; }
+:root[data-theme="woodcut"]{ --t-bg:#efe9da; --t-ink:#0b0b0b; --t-paper:#f7f2e4; --t-mut:#4a463d; --t-lt:#e6dfcc; --t-rt:#f7f2e4; --t-rack:#0b0b0b; --t-row:#0b0b0b; --t-rowink:#efe9da; --t-acc:#0b0b0b; --t-accink:#efe9da; --t-head:'Cabin Sketch',cursive; --t-body:'Courier Prime',monospace; --t-headw:700; --t-sw:4px; --t-rad:0px;
+  --t-tex: repeating-linear-gradient(100deg, rgba(11,11,11,.06) 0 1px, transparent 1px 7px); --t-texsize: auto; }
+:root[data-theme="birch"]  { --t-bg:#f6f6f2; --t-ink:#161616; --t-paper:#ffffff; --t-mut:#4f4f4a; --t-lt:#eeeeea; --t-rt:#fafaf7; --t-rack:#ffffff; --t-row:#ffffff; --t-rowink:#161616; --t-acc:#161616; --t-accink:#f6f6f2; --t-head:'Kalam',cursive; --t-body:'Kalam',cursive; --t-headw:700; --t-sw:2.5px; --t-rad:3px;
+  --t-tex: radial-gradient(rgba(22,22,22,.08) 1px, transparent 1.4px); --t-texsize: 38px 44px; }
+:root[data-theme="knit"]   { --t-bg:#f7f5f0; --t-ink:#1b1b1b; --t-paper:#ffffff; --t-mut:#55524c; --t-lt:#eef2f7; --t-rt:#fbf1e2; --t-rack:#ffffff; --t-row:#ffffff; --t-rowink:#1b1b1b; --t-acc:#1b1b1b; --t-accink:#f7f5f0; --t-head:'Short Stack',cursive; --t-body:'Short Stack',cursive; --t-headw:400; --t-sw:2.5px; --t-rad:14px;
+  --t-tex: radial-gradient(rgba(27,27,27,.06) .8px, transparent 1.2px); --t-texsize: 14px 16px; }
+:root[data-theme="comic"]  { --t-bg:#ffffff; --t-ink:#0b0b0b; --t-paper:#ffffff; --t-mut:#3d3d3d; --t-lt:#eef3fa; --t-rt:#fdf3e4; --t-rack:#ffffff; --t-row:#ffffff; --t-rowink:#0b0b0b; --t-acc:#0b0b0b; --t-accink:#ffffff; --t-head:'Bangers',cursive; --t-body:'Comic Neue',cursive; --t-headw:400; --t-sw:3.5px; --t-rad:2px;
+  --t-tex: radial-gradient(rgba(11,11,11,.05) 1px, transparent 1.3px); --t-texsize: 7px 7px; }
+:root[data-theme="orange"] { --t-bg:#fbfaf6; --t-ink:#121212; --t-paper:#ffffff; --t-mut:#4d4a44; --t-lt:#f1f1ee; --t-rt:#fff4df; --t-rack:#ffffff; --t-row:#ffffff; --t-rowink:#121212; --t-acc:#fca311; --t-accink:#121212; --t-head:'Architects Daughter',cursive; --t-body:'Architects Daughter',cursive; --t-headw:400; --t-sw:2.5px; --t-rad:6px;
+  --t-tex: radial-gradient(rgba(18,18,18,.07) .8px, transparent 1.2px); --t-texsize: 22px 26px; }
+:root[data-theme="navy"]   { --t-bg:#14213d; --t-ink:#e5e5e5; --t-paper:#182746; --t-mut:#b9c0cc; --t-lt:#1a2a4d; --t-rt:#22304f; --t-rack:#14213d; --t-row:#1d2c4f; --t-rowink:#ffffff; --t-acc:#fca311; --t-accink:#14213d; --t-head:'Gochi Hand',cursive; --t-body:'Gaegu',cursive; --t-headw:400; --t-sw:2.5px; --t-rad:8px; --t-dark:1;
+  --t-tex: radial-gradient(rgba(255,255,255,.18) 1.2px, transparent 1.6px), radial-gradient(rgba(255,255,255,.12) .8px, transparent 1.2px); --t-texsize: 52px 58px, 27px 31px; }
+:root[data-theme="sketch"] { --t-bg:#fdfdf8; --t-ink:#2b2b2b; --t-paper:#fffffb; --t-mut:#4a4a44; --t-lt:#f3f6fb; --t-rt:#fdf6ea; --t-rack:#fffffb; --t-row:#fffffb; --t-rowink:#2b2b2b; --t-acc:#2b2b2b; --t-accink:#fdfdf8; --t-head:'Caveat',cursive; --t-body:'Caveat',cursive; --t-headw:700; --t-sw:2px; --t-rad:4px;
+  --t-tex: linear-gradient(rgba(159,179,200,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(159,179,200,.3) 1px, transparent 1px); --t-texsize: 24px 24px; }
+:root[data-theme="quiet"]  { --t-bg:#ffffff; --t-ink:#1a1a1a; --t-paper:#ffffff; --t-mut:#57544e; --t-lt:#fafafa; --t-rt:#ffffff; --t-rack:#ffffff; --t-row:#ffffff; --t-rowink:#1a1a1a; --t-acc:#1a1a1a; --t-accink:#ffffff; --t-head:'Gaegu',cursive; --t-body:'Delius',cursive; --t-headw:700; --t-sw:1.5px; --t-rad:10px;
+  --t-tex: none; --t-texsize: auto; }
+
+/* the app's own colour roles follow the theme */
+:root[data-skin="retro"][data-ink] {
+  --bg: var(--t-bg); --surface: var(--t-paper); --surface-2: var(--t-paper); --ink: var(--t-ink); --ink-2: var(--t-ink); --muted: var(--t-mut);
+  --line: var(--t-ink); --line-2: var(--t-mut); --accent: var(--t-acc); --accent-ink: var(--t-accink); --accent-soft: var(--t-paper);
+  --putty: var(--t-paper); --putty-hi: var(--t-paper); --putty-lo: var(--t-mut); --putty-dk: var(--t-ink);
+}
+:root[data-skin="retro"][data-theme="snow"], :root[data-skin="retro"][data-theme="navy"] { color-scheme: dark; }
+:root[data-skin="retro"][data-ink] body { background-color: var(--t-bg) !important; background-image: var(--t-tex) !important; background-size: var(--t-texsize) !important; color: var(--t-ink); font-family: var(--t-body); font-size: 17px; }
+:root[data-skin="retro"][data-ink] :is(button, input, select, textarea) { font-family: var(--t-body); }
+:root[data-skin="retro"][data-ink] :is(h1, h2, h3, .brand-name, .card-h h2, .modal-h h2) { font-family: var(--t-head); font-weight: var(--t-headw); color: var(--t-ink); letter-spacing: .01em; }
+:root[data-skin="retro"][data-ink] :is(.work, .rail, .topbar, .tabs) { background: transparent !important; color: var(--t-ink); }
+:root[data-skin="retro"][data-ink] .rail { border-right: var(--t-sw) solid var(--t-ink) !important; box-shadow: none !important; }
+:root[data-skin="retro"][data-ink] :is(.muted, small, .brand-sub, .plan-sub) { color: var(--t-mut); }
+
+/* hand-drawn outlines: the real border is hidden and a wobbly one is drawn over it */
+:root[data-skin="retro"][data-ink] :is(.btn, .btn-mini, .tab, .card, .summary, .modal, .prack-box, .venue-item, .export-opt, .theme-opt, .pside-tag) {
+  position: relative; border-color: transparent !important; box-shadow: none !important; background-image: none !important; border-radius: var(--t-rad) !important; text-shadow: none !important;
+}
+:root[data-skin="retro"][data-ink] :is(.btn, .btn-mini, .tab, .card, .summary, .modal, .prack-box, .venue-item, .export-opt, .theme-opt, .pside-tag)::after {
+  content: ""; position: absolute; inset: 0; border: var(--t-sw) solid var(--t-ink); border-radius: var(--t-rad); filter: url(#ink-wob); pointer-events: none; background: none; display: block; transform: none; opacity: 1;
+}
+:root[data-skin="retro"][data-ink] :is(.btn, .btn-mini, .tab) { background-color: var(--t-paper) !important; color: var(--t-ink) !important; font-size: 16px; }
+:root[data-skin="retro"][data-ink] :is(.btn:hover, .tab:hover) { background-color: var(--t-lt) !important; }
+:root[data-skin="retro"][data-ink] :is(.btn-primary, .tab[aria-selected="true"], .vseg [aria-pressed="true"], .seg [aria-pressed="true"]) { background-color: var(--t-acc) !important; color: var(--t-accink) !important; }
+:root[data-skin="retro"][data-ink] .btn.danger { color: var(--t-ink) !important; text-decoration: underline wavy; }
+:root[data-skin="retro"][data-ink] .tab .count { background: transparent !important; color: inherit !important; border: 1.5px solid currentColor; }
+:root[data-skin="retro"][data-ink] .tabs { border-bottom: var(--t-sw) solid var(--t-ink) !important; }
+:root[data-skin="retro"][data-ink] :is(.card, .modal, .summary, .venue-item, .export-opt, .theme-opt) { background-color: var(--t-paper) !important; color: var(--t-ink) !important; }
+:root[data-skin="retro"][data-ink] .modal-h { background: var(--t-paper) !important; color: var(--t-ink) !important; border-bottom: var(--t-sw) dashed var(--t-mut) !important; }
+:root[data-skin="retro"][data-ink] .modal-h .icon-btn { color: var(--t-ink) !important; }
+:root[data-skin="retro"][data-ink] :is(input[type="text"], input:not([type]), input[type="search"], input[type="date"], input[type="number"], select, textarea) {
+  background: var(--t-paper) !important; color: var(--t-ink) !important; border: 1.5px solid var(--t-ink) !important; box-shadow: none !important; border-radius: calc(var(--t-rad) / 2) !important;
+}
+:root[data-skin="retro"][data-ink] .summary { padding: 12px 8px; }
+:root[data-skin="retro"][data-ink] .summary * { color: var(--t-ink); background-color: transparent; border-color: var(--t-mut) !important; box-shadow: none !important; }
+:root[data-skin="retro"][data-ink] .lcdnum { transform: none; }
+:root[data-skin="retro"][data-ink] .lcdnum .on { fill: var(--t-ink); }
+:root[data-skin="retro"][data-ink] .lcdnum .off { fill: transparent; }
+:root[data-skin="retro"][data-ink] :is(.tbl, .tbl th, .tbl td) { background: transparent !important; color: var(--t-ink) !important; border-color: var(--t-mut) !important; }
+:root[data-skin="retro"][data-ink] .tbl thead th { border-bottom: var(--t-sw) solid var(--t-ink) !important; font-family: var(--t-head); }
+:root[data-skin="retro"][data-ink] .toast { background: var(--t-paper) !important; color: var(--t-ink) !important; border: var(--t-sw) solid var(--t-ink) !important; }
+:root[data-skin="retro"][data-ink] .add-pop { background: var(--t-paper) !important; color: var(--t-ink) !important; border: var(--t-sw) solid var(--t-ink) !important; box-shadow: none !important; }
+:root[data-skin="retro"][data-ink] .add-pop button { color: var(--t-ink) !important; background: transparent !important; }
+:root[data-skin="retro"][data-ink] .add-pop button:hover { background: var(--t-lt) !important; }
+:root[data-skin="retro"][data-ink] .note, :root[data-skin="retro"][data-ink] .banner { background: var(--t-paper) !important; color: var(--t-ink) !important; border: 1.5px dashed var(--t-ink) !important; }
+
+/* the amp plan */
+:root[data-skin="retro"][data-ink] .ptint-L { background-color: var(--t-lt) !important; }
+:root[data-skin="retro"][data-ink] .ptint-R { background-color: var(--t-rt) !important; }
+:root[data-skin="retro"][data-ink] .ptint-L { border-right: var(--t-sw) solid var(--t-ink) !important; }
+:root[data-skin="retro"][data-ink] .ptint-R { border-left: 0 !important; }
+:root[data-skin="retro"][data-ink] :is(.ptint-L, .ptint-R, .psizer) { background-image: none !important; }
+:root[data-skin="retro"][data-ink] .pcanvas { background: transparent !important; border: var(--t-sw) solid var(--t-ink) !important; border-radius: var(--t-rad); }
+:root[data-skin="retro"][data-ink] .pdeck { border: var(--t-sw) solid var(--t-ink) !important; box-shadow: none !important; border-radius: var(--t-rad); background: var(--t-paper) !important; color: var(--t-ink) !important; font-family: var(--t-head) !important; font-weight: var(--t-headw); opacity: 1; }
+:root[data-skin="retro"][data-ink] .pside-tag { background: var(--t-paper) !important; color: var(--t-ink) !important; font-family: var(--t-head); }
+:root[data-skin="retro"][data-ink] .pcanvas .prack-box { background: var(--t-rack) !important; color: var(--t-rowink); }
+:root[data-skin="retro"][data-ink] .pcanvas .prack-name small { color: var(--t-mut) !important; font-family: var(--t-body); font-size: 11px; }
+:root[data-skin="retro"][data-theme="woodcut"] .pcanvas .prack-name small { color: var(--t-rowink) !important; }
+:root[data-skin="retro"][data-ink] .pcanvas .prack-name span { color: var(--t-rowink); font-family: var(--t-head); }
+:root[data-skin="retro"][data-ink] .plan .pcanvas .pslot[data-dev] { background: var(--t-row) !important; color: var(--t-rowink) !important; border: 1.5px solid var(--t-rowink) !important; border-left: 7px solid var(--zc) !important; font-family: var(--t-body); font-size: 14px; }
+:root[data-skin="retro"][data-ink] .plan .pcanvas .pslot[data-dev]:hover { background: var(--t-lt) !important; }
+:root[data-skin="retro"][data-ink] .pcanvas .pslot .ps-m { color: inherit; opacity: .7; font-family: var(--t-body); }
+:root[data-skin="retro"][data-ink] .pcanvas .pslot.p-empty { border: 1.5px dashed var(--t-mut) !important; color: var(--t-mut) !important; background: transparent !important; font-family: var(--t-body); }
+:root[data-skin="retro"][data-theme="woodcut"] .pcanvas .pslot.p-empty { border-color: var(--t-rowink) !important; color: var(--t-rowink) !important; }
+:root[data-skin="retro"][data-ink] .pcell.psel { outline-color: var(--t-acc); }
+/* birch: bark strokes down both sides of each rack */
+:root[data-skin="retro"][data-theme="birch"] .pcanvas .prack-box { background-image: repeating-linear-gradient(180deg, var(--t-ink) 0 9px, transparent 9px 15px), repeating-linear-gradient(180deg, transparent 0 5px, var(--t-ink) 5px 12px, transparent 12px 18px) !important; background-size: 5px 100%, 5px 100% !important; background-position: left top, right top !important; background-repeat: no-repeat !important; padding-left: 10px !important; padding-right: 10px !important; }
+/* knit: a knitted band across the top of the page */
+:root[data-skin="retro"][data-theme="knit"] .work::before { content: ""; display: block; height: 16px; margin: -4px 0 12px; background: repeating-linear-gradient(90deg, var(--t-ink) 0 4px, transparent 4px 10px); opacity: .85; }
+/* comic: halftone on the left half, bold panel lettering */
+:root[data-skin="retro"][data-theme="comic"] .ptint-L { background-image: radial-gradient(rgba(11,11,11,.18) 1px, transparent 1.3px) !important; background-size: 7px 7px !important; }
+:root[data-skin="retro"][data-theme="comic"] :is(h1, .brand-name) { letter-spacing: .04em; }
+/* sketchbook: a strip of tape on each rack */
+:root[data-skin="retro"][data-theme="sketch"] .pcanvas .prack-box::before { content: ""; position: absolute; top: -8px; left: 50%; width: 46px; height: 14px; margin-left: -23px; background: rgba(232,223,191,.85); transform: rotate(-4deg); z-index: 2; pointer-events: none; }
+
+/* zones as ink patterns (black-and-white themes): a patterned block replaces the colour stripe */
+.pslot .ps-z { display: none; }
+:root[data-theme="snow"], :root[data-theme="paper"], :root[data-theme="woodcut"], :root[data-theme="birch"], :root[data-theme="quiet"] { --zpat-ink: var(--t-rowink); }
+:root[data-skin="retro"][data-ink]:is([data-theme="snow"], [data-theme="paper"], [data-theme="woodcut"], [data-theme="birch"], [data-theme="quiet"]) .plan .pcanvas .pslot[data-dev] { border-left-width: 1.5px !important; border-left-color: var(--t-rowink) !important; }
+:root:is([data-theme="snow"], [data-theme="paper"], [data-theme="woodcut"], [data-theme="birch"], [data-theme="quiet"]) .pcanvas .pslot .ps-z { display: block; width: 11px; height: 15px; flex: none; margin-left: 4px; border: 1.5px solid var(--zpat-ink); border-radius: 2px; }
+:root:is([data-theme="snow"], [data-theme="paper"], [data-theme="woodcut"], [data-theme="birch"], [data-theme="quiet"]) .plan-legend .sw[data-z] { background: var(--zp) !important; background-size: var(--zps, auto) !important; border: 1.5px solid var(--t-ink); --zpat-ink: var(--t-ink); }
+:root:is([data-theme="snow"], [data-theme="paper"], [data-theme="woodcut"], [data-theme="birch"], [data-theme="quiet"]) .pcanvas .pslot[data-dev] .ps-z { background: var(--zp); background-size: var(--zps, auto); }
+:root[data-ink] [data-z="0"] { --zp: var(--zpat-ink); }
+:root[data-ink] [data-z="1"] { --zp: repeating-linear-gradient(45deg, var(--zpat-ink) 0 2px, transparent 2px 5px); }
+:root[data-ink] [data-z="2"] { --zp: radial-gradient(var(--zpat-ink) 1.3px, transparent 1.7px); --zps: 5px 5px; }
+:root[data-ink] [data-z="3"] { --zp: repeating-linear-gradient(45deg, var(--zpat-ink) 0 1.5px, transparent 1.5px 5px), repeating-linear-gradient(-45deg, var(--zpat-ink) 0 1.5px, transparent 1.5px 5px); }
+:root[data-ink] [data-z="4"] { --zp: repeating-linear-gradient(-45deg, var(--zpat-ink) 0 2px, transparent 2px 5px); }
+:root[data-ink] [data-z="5"] { --zp: repeating-linear-gradient(90deg, var(--zpat-ink) 0 2px, transparent 2px 5px); }
+:root[data-ink] [data-z="6"] { --zp: repeating-linear-gradient(0deg, var(--zpat-ink) 0 2px, transparent 2px 5px); }
+:root[data-ink] [data-z="7"] { --zp: radial-gradient(var(--zpat-ink) 2px, transparent 2.5px); --zps: 8px 8px; }
+:root[data-ink] [data-z="8"] { --zp: linear-gradient(var(--zpat-ink) 1px, transparent 1px), linear-gradient(90deg, var(--zpat-ink) 1px, transparent 1px); --zps: 5px 5px; }
+:root:is([data-theme="snow"], [data-theme="paper"], [data-theme="woodcut"], [data-theme="birch"], [data-theme="quiet"]) .plan-legend .sw[data-z] { --zpat-ink: var(--t-ink); }
+
+/* the theme picker */
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 12px; }
+.theme-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 12px; min-height: 44px; text-align: left; cursor: pointer; background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 6px; font: inherit; }
+.theme-opt b { font-size: 15px; }
+.theme-opt small { font-size: 12px; color: var(--muted); }
+.theme-opt.is-on { outline: 3px solid var(--hi); outline-offset: 2px; }
+.theme-sw { display: flex; gap: 0; width: 100%; height: 26px; margin-bottom: 4px; border: 1px solid rgba(0,0,0,.35); border-radius: 3px; overflow: hidden; }
+.theme-sw i { flex: 1; }
+.theme-sw-classic i:nth-child(1) { background: #c9cbc4; } .theme-sw-classic i:nth-child(2) { background: #ece6d6; } .theme-sw-classic i:nth-child(3) { background: #1b1d1f; }
+.theme-sw-snow i:nth-child(1) { background: #0e0e0e; } .theme-sw-snow i:nth-child(2) { background: radial-gradient(#f3f0e8 1.2px, #0e0e0e 1.6px) 0 0/9px 9px; } .theme-sw-snow i:nth-child(3) { background: #f3f0e8; }
+.theme-sw-paper i:nth-child(1) { background: #fbfaf5; } .theme-sw-paper i:nth-child(2) { background: #ffffff; } .theme-sw-paper i:nth-child(3) { background: #141414; }
+.theme-sw-woodcut i:nth-child(1) { background: #efe9da; } .theme-sw-woodcut i:nth-child(2) { background: #0b0b0b; } .theme-sw-woodcut i:nth-child(3) { background: repeating-linear-gradient(100deg, #0b0b0b 0 1px, #efe9da 1px 5px); }
+.theme-sw-birch i:nth-child(1) { background: #f6f6f2; } .theme-sw-birch i:nth-child(2) { background: repeating-linear-gradient(180deg, #161616 0 6px, #fff 6px 11px); } .theme-sw-birch i:nth-child(3) { background: #fff; }
+.theme-sw-knit i:nth-child(1) { background: repeating-linear-gradient(90deg, #1b1b1b 0 3px, #f7f5f0 3px 7px); } .theme-sw-knit i:nth-child(2) { background: #eef2f7; } .theme-sw-knit i:nth-child(3) { background: #fbf1e2; }
+.theme-sw-comic i:nth-child(1) { background: radial-gradient(#0b0b0b 1px, #fff 1.3px) 0 0/5px 5px; } .theme-sw-comic i:nth-child(2) { background: #eef3fa; } .theme-sw-comic i:nth-child(3) { background: #0b0b0b; }
+.theme-sw-orange i:nth-child(1) { background: #fbfaf6; } .theme-sw-orange i:nth-child(2) { background: #fca311; } .theme-sw-orange i:nth-child(3) { background: #121212; }
+.theme-sw-navy i:nth-child(1) { background: #14213d; } .theme-sw-navy i:nth-child(2) { background: radial-gradient(#fff 1.1px, #14213d 1.5px) 0 0/9px 9px; } .theme-sw-navy i:nth-child(3) { background: #fca311; }
+.theme-sw-sketch i:nth-child(1) { background: linear-gradient(#9fb3c8 1px, transparent 1px) 0 0/7px 7px, linear-gradient(90deg, #9fb3c8 1px, #fdfdf8 1px) 0 0/7px 7px; } .theme-sw-sketch i:nth-child(2) { background: #e8dfbf; } .theme-sw-sketch i:nth-child(3) { background: #2b2b2b; }
+.theme-sw-quiet i:nth-child(1) { background: #fff; } .theme-sw-quiet i:nth-child(2) { background: #fafafa; } .theme-sw-quiet i:nth-child(3) { background: #1a1a1a; }
+:root[data-skin="retro"][data-ink] .summary :is(span, small, b, p, em, strong, div):not(.lcdnum):not(.sev-ico) { color: var(--t-ink) !important; opacity: 1 !important; }
+
 </style>
 </head>
 <body>
@@ -1308,6 +1448,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     <div class="work-inner" id="work-inner"><div class="loading"><span class="dot busy"></span><span>Opening your saved plans…</span></div></div>
   </main>
 </div>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><filter id="ink-wob"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="3.2"/></filter></svg>
 <div id="modal-root"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="tip" id="tip" hidden></div>
@@ -2943,6 +3084,36 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   const prefs = Object.assign({ sep: '', last: '', devView: 'racks' }, safeJson(lsGet(LS_PREFS)) || {});
   // one look: the beige 90s office (styles under [data-skin="retro"])
   document.documentElement.dataset.skin = 'retro';
+  // ink-illustration themes on top of it, picked from the ⋮ menu (styles under [data-theme="…"])
+  const THEMES = [
+    { id: 'classic', name: 'Classic', note: 'The beige office look', fonts: '' },
+    { id: 'snow', name: 'Snowfall night', note: 'White ink on black, falling snow', fonts: 'Gaegu:wght@400;700' },
+    { id: 'paper', name: 'Paper and ink', note: 'Black ink on paper, stipple', fonts: 'Patrick+Hand' },
+    { id: 'woodcut', name: 'Woodcut', note: 'Heavy black lines, cream type', fonts: 'Cabin+Sketch:wght@700&family=Courier+Prime:wght@400;700' },
+    { id: 'birch', name: 'Birch bark', note: 'Racks edged like tree trunks', fonts: 'Kalam:wght@400;700' },
+    { id: 'knit', name: 'Knit beanie', note: 'Chunky rounded outlines', fonts: 'Short+Stack' },
+    { id: 'comic', name: 'Comic panels', note: 'Thick panels, halftone dots', fonts: 'Bangers&family=Comic+Neue:wght@400;700' },
+    { id: 'orange', name: 'Ink and orange', note: 'Black and white with orange', fonts: 'Architects+Daughter' },
+    { id: 'navy', name: 'Midnight navy', note: 'Navy night, white ink, orange', fonts: 'Gochi+Hand&family=Gaegu:wght@400;700' },
+    { id: 'sketch', name: 'Sketchbook', note: 'Graph paper, pencil, tape', fonts: 'Caveat:wght@400;700' },
+    { id: 'quiet', name: 'Quiet ink', note: 'Thin lines, lots of white', fonts: 'Gaegu:wght@700&family=Delius' },
+  ];
+  function applyTheme(id) {
+    const t = THEMES.find((x) => x.id === id) || THEMES[0];
+    const root = document.documentElement;
+    if (t.id === 'classic') { delete root.dataset.theme; delete root.dataset.ink; } else { root.dataset.theme = t.id; root.dataset.ink = '1'; }
+    if (t.fonts && !document.getElementById('font-' + t.id)) {
+      try {
+        const l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.id = 'font-' + t.id;
+        l.href = 'https://fonts.googleapis.com/css2?family=' + t.fonts + '&display=swap';
+        document.head.appendChild(l);
+      } catch (e) { /* offline: the theme falls back to a handwriting font on the device */ }
+    }
+    return t;
+  }
+  applyTheme(prefs.theme);
   prefs.cols = Object.assign({}, DEFAULT_COLS, prefs.cols || {});
   const savePrefs = () => lsSet(LS_PREFS, JSON.stringify(prefs));
 
@@ -3406,6 +3577,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       // Export, Duplicate and Delete live in one ⋮ menu
       '<div class="vhead-actions"><details class="add-menu more-menu"><summary class="btn more-btn" aria-label="More actions for this venue" title="More">' +
       '<svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2.5" r="1.6"/><circle cx="2" cy="8" r="1.6"/><circle cx="2" cy="13.5" r="1.6"/></svg></summary><div class="add-pop" role="menu">' +
+      '<button type="button" role="menuitem" data-act="theme-pick">Theme: ' + esc((THEMES.find((x) => x.id === (prefs.theme || 'classic')) || THEMES[0]).name) + '…</button>' +
       '<button type="button" role="menuitem" data-act="net-toggle">' + (prefs.netOpen ? 'Hide network settings' : 'Network settings…') + '</button>' +
       '<button type="button" role="menuitem" data-act="export">Export…</button>' +
       (S.readOnly ? '' : '<button type="button" role="menuitem" data-act="dup-venue">Duplicate venue</button><button type="button" role="menuitem" class="danger" data-act="del-venue">Delete venue</button>') +
@@ -3887,7 +4059,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     if (L === 'night') return '<i class="pf-stripe" aria-hidden="true"></i><span class="pn-top"><b>' + esc(pre) + '</b><span class="pn-st st-' + esc(d.status) + '"><i aria-hidden="true"></i>' + esc(C.STATUS_LABEL[d.status] || '') + '</span></span><span class="pn-ip">' + (h != null ? '.' + h : '—') + '</span>';
     // compact rack style: zone stripe on the left (CSS), label, short model on the right
     const short = String(C.modelOf(d.model).label).replace(/^LA/, '');
-    return '<span class="ps-lab">' + esc(C.slotLabel(v, d, a.info)) + '</span><small class="ps-m">' + esc(short) + '</small>';
+    return '<i class="ps-z" aria-hidden="true"></i><span class="ps-lab">' + esc(C.slotLabel(v, d, a.info)) + '</span><small class="ps-m">' + esc(short) + '</small>';
   }
   function ampChip(v, a, d, extra) {
     const L = layoutOf();
@@ -3898,7 +4070,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     const vars = '--zc:var(--z' + c + ');--zi:var(--z' + (c === 3 ? '3' : '') + '-ink)';
     const paint = vars;
     return '<div class="pslot' + (sev === 'error' ? ' p-err' : sev === 'warn' ? ' p-warn' : '') + '" role="button" tabindex="0"' + (S.readOnly ? '' : ' draggable="true"') +
-      ' data-act="amp-edit" data-dev="' + esc(d.id) + '"' + (extra || '') + ' style="' + paint + '" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + slotInner(v, a, d, L) + '</div>';
+      ' data-act="amp-edit" data-dev="' + esc(d.id) + '" data-z="' + c + '"' + (extra || '') + ' style="' + paint + '" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + slotInner(v, a, d, L) + '</div>';
   }
   const rackAttrs = (r) => ' data-rid="' + esc(r.id) + '" data-name="' + esc(r.name) + '" aria-label="' + esc(r.name) + '"' + (S.readOnly ? '' : ' draggable="true" title="Drag to move ' + esc(r.name) + '"');
   function rackBoxHtml(v, a, r) {
@@ -3936,7 +4108,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     const amps = v.devices.filter((d) => C.isAmpModel(d.model));
     const loose = amps.filter((d) => !C.rackById(v, d.rack));
     const noZone = amps.some((d) => !v.zones.some((z) => z.id === d.zone));
-    const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') +
+    const legend = '<ul class="plan-legend" aria-label="Zones">' + v.zones.map((z) => '<li><span class="sw" data-z="' + z.color + '" style="background:var(--z' + z.color + ')"></span>' + esc(z.name) + '</li>').join('') +
       (noZone ? '<li><span class="sw" style="background:var(--z8)"></span>No zone</li>' : '') + '</ul>';
     const sub = [a.info.blockStr ? a.info.blockStr + '.x' : '', C.plural(racks.length, 'rack'), C.plural(amps.length, 'amp')].filter(Boolean).join(' · ');
     const head = '<div class="plan-head"><p class="plan-sub">' + esc(sub) + '</p></div>';
@@ -4995,6 +5167,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       const base = (v.name || 'venue').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'venue';
       svgToPng(C.planSvg(v, planShot())).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
     },
+    'theme-pick': () => openThemePicker(),
     'psel-clear': () => { S.psel.clear(); updateSel(); },
     'import-sv': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); closeModal(); $('#sv-file').click(); },
     'export': () => openExport(),
@@ -5313,6 +5486,26 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     S.venues.push(v);
     touch(v, true);
     openVenue(v.id);
+  }
+  function openThemePicker() {
+    const curId = prefs.theme || 'classic';
+    openModal({
+      title: 'Theme',
+      wide: true,
+      body: '<p class="muted">Changes how the app looks on this device. Your plans stay the same.</p><div class="theme-grid">' + THEMES.map((t) =>
+        '<button type="button" class="theme-opt' + (t.id === curId ? ' is-on' : '') + '" data-theme-id="' + t.id + '" aria-pressed="' + (t.id === curId) + '">' +
+        '<span class="theme-sw theme-sw-' + t.id + '" aria-hidden="true"><i></i><i></i><i></i></span><b>' + esc(t.name) + '</b><small>' + esc(t.note) + '</small></button>').join('') + '</div>',
+      actions: [{ label: 'Done', kind: 'primary' }],
+      onOpen: (m) => m.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-theme-id]');
+        if (!b) return;
+        prefs.theme = b.dataset.themeId;
+        savePrefs();
+        applyTheme(prefs.theme);
+        $$('.theme-opt', m).forEach((x) => { const on = x === b; x.classList.toggle('is-on', on); x.setAttribute('aria-pressed', String(on)); });
+        render();
+      }),
+    });
   }
   function openNewVenue() {
     if (S.readOnly) return;
