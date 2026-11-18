@@ -1062,6 +1062,7 @@
 
   const CELL_W = 142;
   const CANVAS_H = 660;
+  const GRID_PAD = 14; // space between the plan's edge and the racks
   const CELL_H = 30;
   // width the grid can use: the plan card's inner width (measured after each draw)
   const gridWidth = () => S.gridW || Math.max(320, Math.min(window.innerWidth - 120, 1600));
@@ -1070,7 +1071,7 @@
     const cw = CELL_W * z;
     const ch = CELL_H * z;
     const W = gridWidth();
-    const cols = Math.max(2, Math.floor((W + 14 * z) / cw));
+    const cols = Math.max(2, Math.floor((W - 2 * GRID_PAD + 14 * z) / cw));
     return { z, cw, ch, W, cols, half: Math.floor(cols / 2) };
   }
   function gridHtml(v, a, L, deck) {
@@ -1079,9 +1080,9 @@
     const lay = C.gridLayout(v, g.half);
     const rows = Math.max(18, ...lay.map((x) => x.r + x.h)) + 4;
     // left racks count from the left edge, right racks from the right edge (so each side hugs its edge)
-    const leftPx = (it) => (it.side === 'L' ? it.c * g.cw : g.W - it.c * g.cw - 128 * g.z);
+    const leftPx = (it) => (it.side === 'L' ? GRID_PAD + it.c * g.cw : g.W - GRID_PAD - it.c * g.cw - 128 * g.z);
     // only racks and the squares scale; the work area keeps its width, so zooming out opens up columns
-    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" style="left:' + leftPx(it) + 'px;top:' + it.r * g.ch + 'px;width:' + 128 * g.z + 'px;height:' + (it.h * CELL_H - 8) * g.z + 'px">' +
+    const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" style="left:' + leftPx(it) + 'px;top:' + (GRID_PAD + it.r * g.ch) + 'px;width:' + 128 * g.z + 'px;height:' + (it.h * CELL_H - 8) * g.z + 'px">' +
       '<div class="pcell-in" style="zoom:' + g.z + ';height:' + (it.h * CELL_H - 8) + 'px">' + (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div></div>').join('');
     const adds = (sd) => (ro ? '' : '<details class="add-menu add-' + sd + '"><summary class="btn-mini">+ Add</summary><div class="add-pop" role="menu">' +
       '<button type="button" role="menuitem" data-act="amp-new" data-side="' + sd + '">Amp in a rack</button>' +
@@ -1097,7 +1098,7 @@
       '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" data-w="' + g.W + '" data-z="' + g.z + '" style="height:' + CANVAS_H + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
       // the work area keeps one size whatever the zoom; only the racks and squares inside it scale.
       // If racks reach past the bottom, the area scrolls instead of growing.
-      '<div class="psizer" style="height:' + Math.max(CANVAS_H - 2, (Math.max(0, ...lay.map((x) => x.r + x.h)) + 1) * g.ch) + 'px">' +
+      '<div class="psizer" style="height:' + Math.max(CANVAS_H - 2, (Math.max(0, ...lay.map((x) => x.r + x.h)) + 1) * g.ch + 2 * GRID_PAD) + 'px">' +
       '<div class="ptint ptint-L" style="width:' + halfW + 'px"></div><div class="ptint ptint-R" style="width:' + halfW + 'px"></div>' + deck + items + '<div class="pghost" hidden></div></div></div>' +
       '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div>';
   }
@@ -1500,10 +1501,11 @@
     const z = +canvas.dataset.z;
     const x = e.clientX - b.left - g.dx; // where the item's left edge would be
     const side = x + 64 * z < W / 2 ? 'L' : 'R';
-    const raw = side === 'L' ? x / cw : (W - x - 128 * z) / cw;
+    const raw = side === 'L' ? (x - GRID_PAD) / cw : (W - GRID_PAD - x - 128 * z) / cw;
     const c = Math.max(0, Math.min(half - 1, Math.round(raw)));
-    const left = side === 'L' ? c * cw : W - c * cw - 128 * z;
-    return { side, c, r: Math.max(0, Math.round((e.clientY - b.top + canvas.scrollTop - g.dy) / ch)), left, cw, ch, half, cols };
+    const left = side === 'L' ? GRID_PAD + c * cw : W - GRID_PAD - c * cw - 128 * z;
+    const r = Math.max(0, Math.round((e.clientY - b.top + canvas.scrollTop - g.dy - GRID_PAD) / ch));
+    return { side, c, r, top: GRID_PAD + r * ch, left, cw, ch, half, cols };
   }
   function dragRows() {
     const v = cur();
@@ -1550,7 +1552,7 @@
       $$('.drop-hover, .rk-before, .rk-after, .rk-end').forEach((x) => x.classList.remove('drop-hover', 'rk-before', 'rk-after', 'rk-end'));
       const cell = gridCell(e, canvas);
       const gh = canvas.querySelector('.pghost');
-      if (gh) { gh.hidden = false; gh.style.left = cell.left + 'px'; gh.style.top = cell.r * cell.ch + 'px'; gh.style.width = 128 * (cell.cw / CELL_W) + 'px'; gh.style.height = (dragRows() * CELL_H - 8) * (cell.ch / CELL_H) + 'px'; }
+      if (gh) { gh.hidden = false; gh.style.left = cell.left + 'px'; gh.style.top = cell.top + 'px'; gh.style.width = 128 * (cell.cw / CELL_W) + 'px'; gh.style.height = (dragRows() * CELL_H - 8) * (cell.ch / CELL_H) + 'px'; }
       return;
     }
     $$('.pghost').forEach((g) => { g.hidden = true; });
