@@ -744,9 +744,14 @@
       '<input id="q-' + esc(g.id) + '" type="number" min="1" max="999" inputmode="numeric" data-sf="qty" value="' + g.qty + '" aria-label="How many ' + esc(C.speakerLabel(g)) + '"' + ro + '>' +
       '<button type="button" data-act="spk-step" data-step="1" aria-label="One more"' + ro + '>+</button></div>';
   }
+  // a slot in the "What you need" racks reads like the amp plan: "L2 - 11", "L2D - 18", in its zone's colour
   function slotHtml(sl) {
-    if (!sl.type) return '<span class="slot other" title="Amp not linked to speakers">other</span>';
-    return '<span class="slot c' + sl.type.color + '" style="background:var(--z' + sl.type.color + ')" title="' + esc(sl.type.label) + '">' + esc(sl.type.label) + '</span>';
+    const v = cur();
+    const d = sl.dev;
+    if (!v || !d) return sl.type ? '<span class="slot" style="background:var(--z' + sl.type.color + ')">' + esc(sl.type.label) + '</span>' : '<span class="slot other">other</span>';
+    const c = zoneColorOf(v, d);
+    const lab = C.slotLabel(v, d, analysis(v).info);
+    return '<span class="slot' + (sl.type ? '' : ' other') + '" style="background:var(--z' + c + ');color:var(--z' + (c === 3 ? '3' : '') + '-ink)" title="' + esc(d.name + (sl.type ? '' : ' · not linked to speakers')) + '">' + esc(lab) + '</span>';
   }
   function speakersHtml(v) {
     const sp = C.speakerPlan(v);
@@ -784,7 +789,7 @@
       (t.e ? ' · ' + esc(C.rackText(t.e, C.rackSizeOf(v, t.amp))) : '') + '</span></div></li>').join('') + '</ul>' : '';
     const models = sp.ampModels.map((m) => {
       const racks = m.size
-        ? '<div class="racks">' + m.racks.map((r, i) => '<div class="rack" role="img" aria-label="' + esc((C.RACK_FOR[m.id] || 'Rack') + ' ' + (i + 1) + ': ' + r.map((x) => (x.type ? x.type.label : 'other')).join(', ') + (m.size - r.length ? ', ' + (m.size - r.length) + ' free' : '')) + '">' +
+        ? '<div class="racks">' + m.racks.map((r, i) => '<div class="rack" role="img" aria-label="' + esc((C.RACK_FOR[m.id] || 'Rack') + ' ' + (i + 1) + ': ' + r.map((x) => (x.dev ? C.slotLabel(cur(), x.dev, analysis(cur()).info) : x.type ? x.type.label : 'other')).join(', ') + (m.size - r.length ? ', ' + (m.size - r.length) + ' free' : '')) + '">' +
             '<span class="rack-cap">RACK ' + (i + 1) + '</span>' + r.map(slotHtml).join('') + range(m.size - r.length).map(() => '<span class="slot free">free</span>').join('') + '</div>').join('') + '</div>'
         : '<div class="loose">' + m.slots.map(slotHtml).join('') + '</div>';
       return '<div class="need-model"><div class="nm-head"><div class="nm-total"><b>' + m.total + '</b><span>× ' + esc(m.id) + '</span></div>' +

@@ -783,11 +783,12 @@
       const slots = [];
       for (const t of types) if (t.amp === id) {
         const keyGroups = new Set(groups.filter((x) => x.label + '|' + x.g.amp === t.key).map((x) => x.g.id));
-        const n = all.filter((d) => keyGroups.has(d.drives)).length;
-        for (let k = 0; k < n; k++) slots.push({ type: t });
+        for (const d of all.filter((x) => keyGroups.has(x.drives))) slots.push({ type: t, dev: d });
       }
-      const other = all.length - slots.length;
-      for (let k = 0; k < other; k++) slots.push({ type: null });
+      const used = new Set(slots.map((x) => x.dev));
+      const rest = all.filter((d) => !used.has(d));
+      const other = rest.length;
+      for (const d of rest) slots.push({ type: null, dev: d });
       const size = rackSizeOf(v, id);
       const racks = [];
       if (size) for (let k = 0; k < slots.length; k += size) racks.push(slots.slice(k, k + size));
