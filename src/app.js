@@ -3040,9 +3040,28 @@
       }),
     });
   }
+  // Outside Claude (GitHub Pages, the installed app) the browser saves the file itself.
+  function browserDownload(name, data) {
+    try {
+      const type = /\.png$/i.test(name) ? 'image/png' : /\.svg$/i.test(name) ? 'image/svg+xml' : /\.json$/i.test(name) ? 'application/json' : /\.csv$/i.test(name) ? 'text/csv' : 'text/plain';
+      const blob = data instanceof Blob ? data : new Blob([data], { type: type + ';charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      toast('Saved ' + name + '.');
+    } catch (e) {
+      toast('Couldn’t save the file here.');
+    }
+  }
   async function saveFile(name, data) {
     const dl = await getDownloads();
-    if (!dl) { toast('Downloads aren’t available here.'); return; }
+    if (!dl) { browserDownload(name, data); return; }
     try {
       await dl.save({ filename: name, data });
       toast('Saved ' + name + '.');
