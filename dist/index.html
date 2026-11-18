@@ -3195,7 +3195,13 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let installEvt = null;
   if (isWebsite() && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+    window.addEventListener('load', () => {
+      // a newer version took over: reload once so the open page is the new one
+      const had = !!navigator.serviceWorker.controller;
+      let done = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !done && !S.modal && !isEditing()) { done = true; location.reload(); } });
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => { try { r.update(); } catch (e) { /* ignore */ } }).catch(() => {});
+    });
   }
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (!cur()) renderRail(); });
   window.addEventListener('appinstalled', () => { installEvt = null; toast('Amp Plan is installed. Open it from your home screen.'); if (!cur()) renderRail(); });
