@@ -512,10 +512,7 @@
       '<button class="pill sev-' + sev + '" data-act="tab" data-tab="checks"><span class="pill-ico">' + (sev === 'ok' ? ICON.ok : SEV_ICON[sev]) + '</span><span>' + esc(main) + '<span class="pill-sub">' + esc(sub) + '</span></span></button>' +
       '<button class="fact fact-btn" data-act="tab" data-tab="speakers"><span>Speakers</span><b>' + lcd(sp.enclosures) + '</b></button>' +
       '<button class="fact fact-btn" data-act="tab" data-tab="speakers"><span>Amps</span><b>' + lcd(cp.ampTotal) + (cp.ampTotal ? '<small>' + esc(C.rackSummary(cp)) + '</small>' : '') + '</b></button>' +
-      '<div class="fact"><span>Units in LA NWM</span><b>' + lcd(s.units) + '<small>/ 253</small></b></div>' +
-      '<div class="fact"><span>Free on ' + esc(a.info.blockStr || '—') + '.x</span><b>' + (a.info.ok ? lcd(s.free) : lcd('---')) + '</b></div>' +
-      '<div class="fact wide"><span>LA Network Manager scan range</span><div class="row"><b class="scan">' + (s.scanFrom != null ? lcd(ip(s.scanFrom) + ' - ' + ip(s.scanTo), 'small') : esc(scan)) + '</b>' +
-      (s.scanFrom != null ? '<button class="btn-mini" data-act="copy-scan">Copy</button>' : '') + '</div></div></section>';
+      '</section>';
   }
 
   function netHtml(v, a) {
@@ -1838,7 +1835,7 @@
       '<li>Run the same firmware on every unit, matched to your LA Network Manager version.</li></ul></section>' +
       '<section><h3>Control computer</h3><ul>' +
       '<li>Same subnet and mask as the units, with only one network card on that subnet.</li>' +
-      '<li>Keep unit addresses consecutive and set the scan range in LA Network Manager (Options, IP range to scan) to match. The summary bar above gives the range.</li>' +
+      '<li>Keep unit addresses consecutive and set the scan range in LA Network Manager (Options, IP range to scan) to match. Checks lists any address outside the plan.</li>' +
       '<li>Don’t reach the units over Wi-Fi for firmware updates.</li></ul></section>' +
       '<section><h3>Speakers per amp</h3><ul>' +
       '<li>Amps needed = speakers ÷ the most enclosures one amplified controller may drive, from L-Acoustics’ Amplification Reference and Preset Guide. For example 3 K2 per LA12X, 4 per LA7.16 and 1 per LA4X; 4 KS28 per LA12X; 1 L2 per LA7.16.</li>' +
