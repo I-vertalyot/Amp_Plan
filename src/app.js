@@ -983,7 +983,7 @@
     const sw = v.devices.filter((d) => d.rack === r.id && !C.isAmpModel(d.model));
     const foot = sw.length ? '<div class="prack-foot">' + esc(sw.map((d) => d.model + (C.parseIp(d.ip) != null ? ' .' + C.host(C.parseIp(d.ip)) : '')).join(' · ')) + '</div>' : '';
     const del = ro ? '' : '<button type="button" class="prack-del" data-act="rack-del" data-rack="' + esc(r.id) + '" title="Delete ' + esc(r.name) + '" aria-label="Delete ' + esc(r.name) + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>';
-    const name = '<button type="button" class="prack-name" data-act="rack-edit" data-rack="' + esc(r.id) + '"' + (ro ? ' disabled' : '') + ' title="' + esc((r.type || 'Custom rack') + (ro ? '' : ' · click to edit')) + '"><span>' + esc(r.name) + '</span>' + (r.type ? '<small>' + esc(r.type) + '</small>' : '') + '</button>';
+    const name = '<button type="button" class="prack-name" data-act="rack-edit" data-rack="' + esc(r.id) + '"' + (ro ? ' disabled' : '') + ' title="' + esc((r.type || 'Custom rack') + (ro ? '' : ' · click to edit')) + '"><span>' + esc(r.name) + '</span></button>';
     const L = layoutOf();
     if (L === 'fronts') {
       const ls = sw.map((d) => '<div class="pfr-ls"><span>' + esc(d.model) + '</span><span>' + (hostOf(d) != null ? '.' + hostOf(d) : '') + '</span></div>').join('');

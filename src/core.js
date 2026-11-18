@@ -1535,7 +1535,7 @@
       const name = it.rack ? it.rack.name : (it.dev.name || modelOf(it.dev.model).label);
       const sub = it.rack ? it.rack.type || (rackModel(v, it.rack) || '') : modelOf(it.dev.model).label;
       r += '<text x="64" y="22" text-anchor="middle" font-family="' + MONO + '" font-size="9.5" font-weight="700" letter-spacing="0.8" fill="#9fc29a">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
-      r += '<text x="64" y="32" text-anchor="middle" font-family="' + MONO + '" font-size="8" fill="#6d8070">' + e(String(sub).slice(0, 22)) + '</text>';
+      if (!it.rack) r += '<text x="64" y="32" text-anchor="middle" font-family="' + MONO + '" font-size="8" fill="#6d8070">' + e(String(sub).slice(0, 22)) + '</text>';
       if (it.rack) {
         rackSlots(v, it.rack).forEach((d, k) => {
           const sy = 38 + k * 28;
