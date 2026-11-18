@@ -1221,3 +1221,9 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .psizer { user-select: none; -webkit-user-select: none; }
 .psel-bar { text-align: center; font-size: 12px; margin: -2px 0 8px; opacity: .8; min-height: 18px; }
 .psel-bar .linkish { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
+
+/* the blue and orange halves always fill half the plan each, whatever the zoom */
+.ptint-L, .ptint-R { width: 50%; }
+.ptint-L { border-right-width: 1px; }
+.ptint-R { border-left-width: 1px; }
+.pzoom .pimg-btn { margin-left: 10px; padding: 0 10px; }

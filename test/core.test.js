@@ -397,7 +397,7 @@ t('racks: layout, swap, pack, resize, legacy names, labels', () => {
   assert.deepStrictEqual(lv.devices.map((d) => [d.rack === lv.racks[0].id, d.slot]), [[true, 0], [true, 1], [true, -1]]);
   // the picture
   const svg = C.planSvg(C.makeExample());
-  assert.ok(svg.startsWith('<svg') && svg.includes('K2 - 11') && svg.includes('Not in a rack') && svg.includes('MAIN L'));
+  assert.ok(svg.startsWith('<svg') && svg.includes('K2 - 11') && svg.includes('STAGE') && svg.includes('MAIN L'));
   assert.ok(!/<script/i.test(svg));
   // CSV has preset and rack position
   assert.ok(C.toDelimited(C.makeExample(), ';').includes('Main L K2 1;LA12X;K2;192.168.1.11;192.168.2.11;Primary + secondary;255.255.255.0;SL wing;RAK 1 · slot 1 (Left)'));

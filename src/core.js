@@ -1481,99 +1481,84 @@
 
   // ---------------------------------------------------------------- amp plan picture (SVG)
   const ZONE_TEXT = ['#4ea1ff', '#ff7b4a', '#2ed3a0', '#ffc233', '#ff74c4', '#63d863', '#ad9dff', '#ff6b6b', '#b8c4c9'];
-  function planSvg(v) {
+  // The amp plan as a picture: the same grid as on screen (racks and single amps where they were put),
+  // left half blue, right half orange, STAGE at the top and FOH at the bottom, zone colours as a legend.
+  function planSvg(v, opts) {
+    opts = opts || {};
     const info = netInfo(v);
     const e = escHtml;
     const zmap = new Map(v.zones.map((z) => [z.id, z]));
-    const W = 1200;
-    const RW = 132;
-    const GAP = 16;
-    const LINE = 24;
     const SANS = 'Arial, Helvetica, sans-serif';
-    const areas = { L: { x: 40, w: 360, align: 'start', color: '#14213d', ink: '#fff' }, C: { x: 420, w: 360, align: 'center', color: '#000000', ink: '#fff' }, R: { x: 800, w: 360, align: 'end', color: '#fca311', ink: '#000' } };
+    const MONO = 'Consolas, Menlo, monospace';
+    const CW = 142; const CH = 30; const PAD = 14; const BW = 128; const MID = 0;
+    let half = Math.max(2, Math.min(12, opts.half || 4));
+    const lay0 = gridLayout(v, half);
+    half = Math.max(2, Math.min(half, Math.max(2, ...lay0.map((it) => it.c + 1)) + (opts.half ? 0 : 0)));
+    const lay = gridLayout(v, half);
+    const halfW = PAD + half * CW - 14 + PAD;
+    const W = Math.max(900, 2 * halfW + MID);
+    const sideW = (W - MID) / 2;
+    const rows = Math.max(14, ...lay.map((it) => it.r + it.h));
+    // header: title, then the zone legend wrapped under it
     let out = '';
-    out += '<text x="600" y="88" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, ' + SANS + '" font-size="64" font-weight="700" font-style="italic"><tspan fill="#fca311">AMP</tspan><tspan fill="#14213d" dx="14">PLAN</tspan></text>';
-    out += '<text x="600" y="120" text-anchor="middle" font-family="' + SANS + '" font-size="15" fill="#5b666c">' + e([v.name, formatDate(v.date), info.blockStr ? info.blockStr + '.x' : ''].filter(Boolean).join(' · ')) + '</text>';
-    // legend top right: one column up to 6 zones, then up to 3 columns growing leftwards
-    const perCol = Math.max(6, Math.ceil(v.zones.length / 3));
-    v.zones.forEach((z, i) => {
-      const col = Math.floor(i / perCol);
-      const y = 44 + (i % perCol) * 24;
-      const lx = 1036 - col * 160;
-      out += '<rect x="' + lx + '" y="' + (y - 12) + '" width="14" height="14" fill="' + ZONE_HEX[z.color] + '"/>';
-      out += '<text x="' + (lx + 22) + '" y="' + y + '" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="0.6" fill="#111">' + e(z.name.toUpperCase().slice(0, 18)) + '</text>';
-    });
-    const TAG = Math.max(146, 44 + (Math.min(v.zones.length, perCol) - 1) * 24 + 26);
-    const TOP = TAG + 52;
-    let maxY = TOP;
-    for (const side of SIDES) {
-      const A = areas[side];
-      const racks = (v.racks || []).filter((r) => r.side === side);
-      const tagW = 104;
-      const tagX = A.align === 'start' ? A.x : A.align === 'end' ? A.x + A.w - tagW : A.x + (A.w - tagW) / 2;
-      out += '<rect x="' + tagX + '" y="' + TAG + '" width="' + tagW + '" height="34" fill="' + A.color + '"/>';
-      out += '<text x="' + (tagX + tagW / 2) + '" y="' + (TAG + 22) + '" text-anchor="middle" font-family="' + SANS + '" font-size="15" font-weight="700" fill="' + A.ink + '">' + SIDE_LABEL[side] + '</text>';
-      if (!racks.length) continue;
-      const cols = Math.max(1, Math.ceil(racks.length / 3));
-      const gridW = cols * RW + (cols - 1) * GAP;
-      const x0 = A.align === 'start' ? A.x : A.align === 'end' ? A.x + A.w - gridW : A.x + (A.w - gridW) / 2;
-      let y = TOP;
-      for (let row = 0; row * cols < racks.length; row++) {
-        let rowH = 0;
-        racks.slice(row * cols, row * cols + cols).forEach((r, c) => {
-          const slots = rackSlots(v, r);
-          const sw = v.devices.filter((d) => d.rack === r.id && !isAmpModel(d.model));
-          const boxH = 30 + r.size * 30 + 2 + (sw.length ? 18 : 0);
-          const x = x0 + c * (RW + GAP);
-          const by = y;
-          out += '<rect x="' + x + '" y="' + by + '" width="' + RW + '" height="' + boxH + '" rx="7" fill="#000"/>';
-          out += '<text x="' + (x + RW / 2) + '" y="' + (by + 14) + '" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="10" font-weight="700" letter-spacing="0.8" fill="#8fa3ab">' + e(r.name.toUpperCase()) + '</text>';
-          out += '<text x="' + (x + RW / 2) + '" y="' + (by + 25) + '" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="8.5" fill="#5f7178">' + e(r.type || '') + '</text>';
-          slots.forEach((d, k) => {
-            const sy = by + 30 + k * 30;
-            if (d) {
-              const z = zmap.get(d.zone);
-              const c = z ? z.color : 8;
-              out += '<rect x="' + (x + 6) + '" y="' + sy + '" width="' + (RW - 12) + '" height="26" rx="3" fill="' + ZONE_HEX[c] + '"/>';
-              out += '<text x="' + (x + RW / 2) + '" y="' + (sy + 18) + '" text-anchor="middle" font-family="' + SANS + '" font-size="13" font-weight="700" fill="' + (c === 3 ? '#0b0b0b' : '#fff') + '">' + e(slotLabel(v, d, info)) + '</text>';
-            } else {
-              out += '<rect x="' + (x + 6.5) + '" y="' + (sy + 0.5) + '" width="' + (RW - 13) + '" height="25" rx="3" fill="none" stroke="#4b5d64" stroke-dasharray="3 3"/>';
-              out += '<text x="' + (x + RW / 2) + '" y="' + (sy + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="11" fill="#6f848c">free</text>';
-            }
-          });
-          if (sw.length) {
-            out += '<text x="' + (x + RW / 2) + '" y="' + (by + boxH - 8) + '" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="10" fill="#7f9098">' +
-              e(sw.map((d) => d.model + (parseIp(d.ip) != null ? ' .' + host(parseIp(d.ip)) : '')).join(' · ')) + '</text>';
-          }
-          rowH = Math.max(rowH, boxH);
-        });
-        y += rowH + GAP;
-      }
-      maxY = Math.max(maxY, y);
-    }
-    const loose = v.devices.filter((d) => isAmpModel(d.model) && !rackById(v, d.rack));
-    if (loose.length) {
-      // each loose amp drawn as its own one-amp case, same look as the racks
-      out += '<text x="40" y="' + (maxY + 24) + '" font-family="' + SANS + '" font-size="13" font-weight="700" fill="#111">Not in a rack</text>';
-      const SW = 132;
-      const SH = 30 + 30 + 2;
-      const perRow = Math.floor((W - 80 + 12) / (SW + 12));
-      loose.forEach((d, k) => {
-        const x = 40 + (k % perRow) * (SW + 12);
-        const by = maxY + 38 + Math.floor(k / perRow) * (SH + 12);
-        const z = zmap.get(d.zone);
-        const c = z ? z.color : 8;
-        out += '<rect x="' + x + '" y="' + by + '" width="' + SW + '" height="' + SH + '" rx="7" fill="#000"/>';
-        out += '<text x="' + (x + SW / 2) + '" y="' + (by + 14) + '" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="10" font-weight="700" letter-spacing="0.8" fill="#8fa3ab">' + e((d.name || modelOf(d.model).label).toUpperCase().slice(0, 18)) + '</text>';
-        out += '<text x="' + (x + SW / 2) + '" y="' + (by + 25) + '" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="8.5" fill="#5f7178">' + e(modelOf(d.model).label) + '</text>';
-        out += '<rect x="' + (x + 6) + '" y="' + (by + 30) + '" width="' + (SW - 12) + '" height="26" rx="3" fill="' + ZONE_HEX[c] + '"/>';
-        out += '<text x="' + (x + SW / 2) + '" y="' + (by + 48) + '" text-anchor="middle" font-family="' + SANS + '" font-size="13" font-weight="700" fill="' + (c === 3 ? '#0b0b0b' : '#fff') + '">' + e(slotLabel(v, d, info)) + '</text>';
+    out += '<text x="' + W / 2 + '" y="58" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, ' + SANS + '" font-size="46" font-weight="700" font-style="italic"><tspan fill="#fca311">AMP</tspan><tspan fill="#14213d" dx="12">PLAN</tspan></text>';
+    out += '<text x="' + W / 2 + '" y="86" text-anchor="middle" font-family="' + SANS + '" font-size="15" fill="#5b666c">' + e([v.name, v.city, formatDate(v.date), info.blockStr ? info.blockStr + '.x' : ''].filter(Boolean).join(' · ')) + '</text>';
+    const used = v.zones.filter((z) => v.devices.some((d) => d.zone === z.id && isAmpModel(d.model)));
+    const items = (used.length ? used : v.zones).map((z) => ({ name: z.name, color: ZONE_HEX[z.color] }));
+    const legW = items.map((z) => 30 + Math.min(18, z.name.length) * 8 + 18);
+    let lx = 0; let ly = 112; const lines = [[]];
+    legW.forEach((w, i) => { if (lx + w > W - 80 && lines[lines.length - 1].length) { lines.push([]); lx = 0; } lines[lines.length - 1].push(i); lx += w; });
+    lines.forEach((ln) => {
+      const tot = ln.reduce((n, i) => n + legW[i], 0);
+      let x = (W - tot) / 2;
+      ln.forEach((i) => {
+        out += '<rect x="' + x + '" y="' + (ly - 11) + '" width="14" height="14" rx="2" fill="' + items[i].color + '"/>';
+        out += '<text x="' + (x + 20) + '" y="' + ly + '" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="0.5" fill="#111">' + e(items[i].name.toUpperCase().slice(0, 18)) + '</text>';
+        x += legW[i];
       });
-      maxY += 38 + Math.ceil(loose.length / perRow) * (SH + 12);
+      ly += 22;
+    });
+    const TAG = ly + 6;
+    const TOP = TAG + 30;
+    const H0 = rows * CH + 2 * PAD + 36;
+    // side tags and the two halves
+    out += '<rect x="0" y="' + TAG + '" width="70" height="24" fill="#14213d"/><text x="35" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">LEFT</text>';
+    out += '<rect x="' + (W - 70) + '" y="' + TAG + '" width="70" height="24" fill="#a0570f"/><text x="' + (W - 35) + '" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">RIGHT</text>';
+    out += '<rect x="0" y="' + TOP + '" width="' + W + '" height="' + H0 + '" fill="#efe8da"/>';
+    out += '<rect x="0" y="' + TOP + '" width="' + sideW + '" height="' + H0 + '" fill="#d4dce3"/>';
+    out += '<rect x="' + (W - sideW) + '" y="' + TOP + '" width="' + sideW + '" height="' + H0 + '" fill="#f3dcb5"/>';
+    out += '<line x1="' + sideW + '" y1="' + TOP + '" x2="' + sideW + '" y2="' + (TOP + H0) + '" stroke="#b9b3a6" stroke-width="2"/><line x1="' + (W - sideW) + '" y1="' + TOP + '" x2="' + (W - sideW) + '" y2="' + (TOP + H0) + '" stroke="#b9b3a6" stroke-width="2"/>';
+    out += '<rect x="0.5" y="' + (TOP + 0.5) + '" width="' + (W - 1) + '" height="' + (H0 - 1) + '" fill="none" stroke="#b9b3a6"/>';
+    const deck = (label, y) => '<rect x="' + (W / 2 - 62) + '" y="' + y + '" width="124" height="34" fill="#f4efe4" stroke="#a8a294" stroke-width="1.5"/><text x="' + W / 2 + '" y="' + (y + 23) + '" text-anchor="middle" font-family="' + SANS + '" font-size="18" font-weight="700" letter-spacing="7" fill="#9a958a">' + label + '</text>';
+    out += deck('STAGE', TOP + 14) + deck('FOH', TOP + H0 - 48);
+    const chip = (d, x, y, w) => {
+      const z = zmap.get(d.zone);
+      const c = z ? z.color : 8;
+      return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="24" rx="2" fill="' + ZONE_HEX[c] + '"/>' +
+        '<text x="' + (x + w / 2) + '" y="' + (y + 16.5) + '" text-anchor="middle" font-family="' + MONO + '" font-size="12.5" font-weight="700" fill="' + (c === 3 ? '#0b0b0b' : '#fff') + '">' + e(slotLabel(v, d, info).slice(0, 16)) + '</text>';
+    };
+    for (const it of lay) {
+      const x = it.side === 'L' ? PAD + it.c * CW : W - PAD - it.c * CW - BW;
+      const y = TOP + PAD + it.r * CH;
+      const h = it.h * CH - 8;
+      out += '<rect x="' + x + '" y="' + y + '" width="' + BW + '" height="' + h + '" rx="9" fill="#e7dfcc" stroke="#9c937f"/>';
+      out += '<rect x="' + (x + 7) + '" y="' + (y + 7) + '" width="' + (BW - 14) + '" height="' + (h - 14) + '" rx="4" fill="#1d2722"/>';
+      const name = it.rack ? it.rack.name : (it.dev.name || modelOf(it.dev.model).label);
+      const sub = it.rack ? it.rack.type || (rackModel(v, it.rack) || '') : modelOf(it.dev.model).label;
+      out += '<text x="' + (x + BW / 2) + '" y="' + (y + 22) + '" text-anchor="middle" font-family="' + MONO + '" font-size="9.5" font-weight="700" letter-spacing="0.8" fill="#9fc29a">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
+      out += '<text x="' + (x + BW / 2) + '" y="' + (y + 32) + '" text-anchor="middle" font-family="' + MONO + '" font-size="8" fill="#6d8070">' + e(String(sub).slice(0, 22)) + '</text>';
+      if (it.rack) {
+        rackSlots(v, it.rack).forEach((d, k) => {
+          const sy = y + 38 + k * 28;
+          if (d) out += chip(d, x + 14, sy, BW - 28);
+          else out += '<rect x="' + (x + 14.5) + '" y="' + (sy + 0.5) + '" width="' + (BW - 29) + '" height="23" fill="none" stroke="#56685a" stroke-dasharray="3 3"/><text x="' + (x + BW / 2) + '" y="' + (sy + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11" fill="#6d8070">free</text>';
+        });
+      } else out += chip(it.dev, x + 14, y + 38, BW - 28);
     }
-    const H = Math.ceil(maxY + 30);
+    const H = Math.ceil(TOP + H0 + 20);
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><rect width="' + W + '" height="' + H + '" fill="#fff"/>' + out + '</svg>';
   }
+
 
   const api = {
     ARRAY_BOTTOM, arrayText, arrayBottomAmp, SCHEMA, MAX_HOST, MAX_DEVICES, SAFE_ID, STATUSES, STATUS_LABEL, GROUPS, MODELS, MODEL_MAP, RACKS, RACK_MAP, DEFAULT_ZONES, ZONE_HEX, LA_RANGES, FD_UNIT, FD_LS10,

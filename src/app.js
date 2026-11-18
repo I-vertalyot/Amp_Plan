@@ -1092,7 +1092,8 @@
     const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the racks"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
       '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(g.z * 100) + '%</button>' +
       '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="+1" aria-label="Zoom in">+</button>' +
-      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen (Ctrl + mouse wheel zooms too)">Fit</button></div>';
+      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen (Ctrl + mouse wheel zooms too)">Fit</button>' +
+      '<button type="button" class="btn-mini pimg-btn" data-act="plan-image" title="Save the amp plan as a .png picture">Save image</button></div>';
     const halfW = g.half * g.cw;
     const tidy = new Set(lay.map((x) => x.key));
     S.psel.forEach((k) => { if (!tidy.has(k)) S.psel.delete(k); });
@@ -1102,7 +1103,7 @@
       // the work area keeps one size whatever the zoom; only the racks and squares inside it scale.
       // If racks reach past the bottom, the area scrolls instead of growing.
       '<div class="psizer" style="height:' + Math.max(CANVAS_H - 2, (Math.max(0, ...lay.map((x) => x.r + x.h)) + 1) * g.ch + 2 * GRID_PAD) + 'px">' +
-      '<div class="ptint ptint-L" style="width:' + halfW + 'px"></div><div class="ptint ptint-R" style="width:' + halfW + 'px"></div>' + deck + items + '<div class="pghost" hidden></div><div class="pband" hidden></div></div></div>' +
+      '<div class="ptint ptint-L"></div><div class="ptint ptint-R"></div>' + deck + items + '<div class="pghost" hidden></div><div class="pband" hidden></div></div></div>' +
       '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div>';
   }
   // after drawing: if the card's width changed, draw again with the right number of columns
@@ -2039,6 +2040,12 @@
     'new-venue': () => openNewVenue(),
     'load-example': () => createVenue(C.makeExample()),
     'import': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); $('#import-file').click(); },
+    'plan-image': () => {
+      const v = cur();
+      if (!v) return;
+      const base = (v.name || 'venue').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'venue';
+      svgToPng(C.planSvg(v, { half: gridGeom().half })).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
+    },
     'psel-clear': () => { S.psel.clear(); updateSel(); },
     'import-sv': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); closeModal(); $('#sv-file').click(); },
     'export': () => openExport(),
@@ -3021,8 +3028,8 @@
         const base = slug(v.name);
         const kind = b.dataset.x;
         if (kind === 'copy') { copyText(C.toDelimited(v, '\t'), 'Table copied. Paste it into a spreadsheet or email.'); return; }
-        if (kind === 'svg') { saveFile(base + '-amp-plan.svg', C.planSvg(v)); return; }
-        if (kind === 'png') { svgToPng(C.planSvg(v)).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
+        if (kind === 'svg') { saveFile(base + '-amp-plan.svg', C.planSvg(v, { half: gridGeom().half })); return; }
+        if (kind === 'png') { svgToPng(C.planSvg(v, { half: gridGeom().half })).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
         if (kind === 'sheet') saveFile(base + '-patch-sheet.html', C.patchSheet(v));
         else if (kind === 'csv') saveFile(base + '-ip-plan.csv', '﻿' + C.toDelimited(v, sep));
         else if (kind === 'json') saveFile(base + '-backup.json', C.bundle([v]));
