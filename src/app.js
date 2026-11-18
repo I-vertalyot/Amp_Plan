@@ -1097,7 +1097,7 @@
       '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" data-w="' + g.W + '" data-z="' + g.z + '" style="height:' + CANVAS_H + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
       // the work area keeps one size whatever the zoom; only the racks and squares inside it scale.
       // If racks reach past the bottom, the area scrolls instead of growing.
-      '<div class="psizer" style="height:' + Math.max(CANVAS_H, rows * g.ch) + 'px">' +
+      '<div class="psizer" style="height:' + Math.max(CANVAS_H - 2, (Math.max(0, ...lay.map((x) => x.r + x.h)) + 1) * g.ch) + 'px">' +
       '<div class="ptint ptint-L" style="width:' + halfW + 'px"></div><div class="ptint ptint-R" style="width:' + halfW + 'px"></div>' + deck + items + '<div class="pghost" hidden></div></div></div>' +
       '<div class="pgrid-foot">' + adds('L') + adds('R') + '</div></div>';
   }
