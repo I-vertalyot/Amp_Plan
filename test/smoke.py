@@ -107,7 +107,7 @@ def run(p, label, mock, dark=False):
     page.screenshot(path=str(SHOTS / f'{label}-3b-amp-editor.png'))
     page.click('.modal-f .btn-primary')
     page.wait_for_timeout(200)
-    first = rack('RAK 1').locator('.pslot[data-dev]').first.inner_text()
+    first = rack('RAK 1').locator('.pslot[data-dev] .ps-lab').first.inner_text()
     print(label, 'after .19:', first)
     assert first == 'K2 - 19', 'ip change not shown'
     # the spare amp in the tray: choose a preset and a number, then pack it
