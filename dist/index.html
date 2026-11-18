@@ -2784,9 +2784,11 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     const HC = Math.round(Math.max(opts.height || 0, need, 400));
     // title
     let out = '';
-    out += '<text x="' + W / 2 + '" y="52" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, ' + SANS + '" font-size="42" font-weight="700" font-style="italic"><tspan fill="#fca311">AMP</tspan><tspan fill="#14213d" dx="12">PLAN</tspan></text>';
-    out += '<text x="' + W / 2 + '" y="78" text-anchor="middle" font-family="' + SANS + '" font-size="15" fill="#5b666c">' + e([v.name, v.city, formatDate(v.date), info.blockStr ? info.blockStr + '.x' : '', (v.racks || []).length + ' racks', v.devices.filter((d) => isAmpModel(d.model)).length + ' amps'].filter(Boolean).join(' · ')) + '</text>';
-    const TAG = 96;
+    // small AMP PLAN mark, the venue name large, then where / when and the counts
+    out += '<text x="' + W / 2 + '" y="22" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, ' + SANS + '" font-size="20" font-weight="700" font-style="italic"><tspan fill="#fca311">AMP</tspan><tspan fill="#14213d" dx="6">PLAN</tspan></text>';
+    out += '<text x="' + W / 2 + '" y="60" text-anchor="middle" font-family="' + SANS + '" font-size="32" font-weight="700" fill="#14213d">' + e(String(v.name || 'Venue').slice(0, 80)) + '</text>';
+    out += '<text x="' + W / 2 + '" y="86" text-anchor="middle" font-family="' + SANS + '" font-size="15" fill="#5b666c">' + e([v.city, formatDate(v.date), plural((v.racks || []).length, 'rack'), plural(v.devices.filter((d) => isAmpModel(d.model)).length, 'amp')].filter(Boolean).join(' · ')) + '</text>';
+    const TAG = 102;
     const TOP = TAG + 28;
     out += '<rect x="0" y="' + TAG + '" width="70" height="24" fill="#14213d"/><text x="35" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">LEFT</text>';
     out += '<rect x="' + (W - 70) + '" y="' + TAG + '" width="70" height="24" fill="#a0570f"/><text x="' + (W - 35) + '" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">RIGHT</text>';
@@ -2845,8 +2847,11 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       });
       ly += 26;
     });
-    const H = Math.ceil(ly);
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><rect width="' + W + '" height="' + H + '" fill="#ece6d8"/>' + out + '</svg>';
+    // a margin all round, so the plan doesn't touch the picture's edges
+    const M = 32;
+    const H = Math.ceil(ly) + 2 * M - 10;
+    const WW = W + 2 * M;
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + WW + '" height="' + H + '" viewBox="0 0 ' + WW + ' ' + H + '"><rect width="' + WW + '" height="' + H + '" fill="#ece6d8"/><g transform="translate(' + M + ' ' + M + ')">' + out + '</g></svg>';
   }
 
 
