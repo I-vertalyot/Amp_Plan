@@ -1434,6 +1434,12 @@
       },
     });
   }
+  // the plan's size and zoom as on screen, so the picture matches what the person sees
+  function planShot() {
+    const g = gridGeom();
+    const sz = $('.pcanvas .psizer');
+    return { half: g.half, zoom: g.z, width: g.W, height: sz ? sz.offsetHeight + 2 : CANVAS_H };
+  }
   function svgToPng(svg) {
     return new Promise((resolve, reject) => {
       const mm = /width="(\d+)" height="(\d+)"/.exec(svg);
@@ -1443,10 +1449,12 @@
       img.onload = () => {
         try {
           const c = document.createElement('canvas');
-          c.width = w * 2;
-          c.height = h * 2;
+          // the screen's own pixel density: 1 on a normal monitor, 2 on Retina / phones
+          const k = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+          c.width = Math.round(w * k);
+          c.height = Math.round(h * k);
           const ctx = c.getContext('2d');
-          ctx.scale(2, 2);
+          ctx.scale(k, k);
           ctx.drawImage(img, 0, 0, w, h);
           c.toBlob((b) => (b ? resolve(b) : reject(new Error('png'))), 'image/png');
         } catch (e) { reject(e); }
@@ -2053,7 +2061,7 @@
       const v = cur();
       if (!v) return;
       const base = (v.name || 'venue').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'venue';
-      svgToPng(C.planSvg(v, { half: gridGeom().half })).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
+      svgToPng(C.planSvg(v, planShot())).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
     },
     'psel-clear': () => { S.psel.clear(); updateSel(); },
     'import-sv': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); closeModal(); $('#sv-file').click(); },
@@ -3037,8 +3045,8 @@
         const base = slug(v.name);
         const kind = b.dataset.x;
         if (kind === 'copy') { copyText(C.toDelimited(v, '\t'), 'Table copied. Paste it into a spreadsheet or email.'); return; }
-        if (kind === 'svg') { saveFile(base + '-amp-plan.svg', C.planSvg(v, { half: gridGeom().half })); return; }
-        if (kind === 'png') { svgToPng(C.planSvg(v, { half: gridGeom().half })).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
+        if (kind === 'svg') { saveFile(base + '-amp-plan.svg', C.planSvg(v, planShot())); return; }
+        if (kind === 'png') { svgToPng(C.planSvg(v, planShot())).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
         if (kind === 'sheet') saveFile(base + '-patch-sheet.html', C.patchSheet(v));
         else if (kind === 'csv') saveFile(base + '-ip-plan.csv', '﻿' + C.toDelimited(v, sep));
         else if (kind === 'json') saveFile(base + '-backup.json', C.bundle([v]));

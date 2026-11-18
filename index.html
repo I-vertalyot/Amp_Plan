@@ -2764,8 +2764,9 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 
   // ---------------------------------------------------------------- amp plan picture (SVG)
   const ZONE_TEXT = ['#4ea1ff', '#ff7b4a', '#2ed3a0', '#ffc233', '#ff74c4', '#63d863', '#ad9dff', '#ff6b6b', '#b8c4c9'];
-  // The amp plan as a picture: the same grid as on screen (racks and single amps where they were put),
-  // left half blue, right half orange, STAGE at the top and FOH at the bottom, zone colours as a legend.
+  // The amp plan as a picture, the way it looks on screen: same width, height, zoom and columns
+  // (opts.width / opts.height / opts.zoom / opts.half from the page), racks and single amps where they
+  // were put, left half blue, right half orange, STAGE / FOH, and every zone with its colour underneath.
   function planSvg(v, opts) {
     opts = opts || {};
     const info = netInfo(v);
@@ -2773,74 +2774,81 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
     const zmap = new Map(v.zones.map((z) => [z.id, z]));
     const SANS = 'Arial, Helvetica, sans-serif';
     const MONO = 'Consolas, Menlo, monospace';
-    const CW = 142; const CH = 30; const PAD = 14; const BW = 128; const MID = 0;
-    let half = Math.max(2, Math.min(12, opts.half || 4));
-    const lay0 = gridLayout(v, half);
-    half = Math.max(2, Math.min(half, Math.max(2, ...lay0.map((it) => it.c + 1)) + (opts.half ? 0 : 0)));
+    const z = Math.max(0.3, Math.min(1.5, +opts.zoom || 1));
+    const PAD = 14;
+    const CW = 142 * z; const CH = 30 * z; const BW = 128 * z;
+    const half = Math.max(1, Math.min(40, opts.half || 4));
     const lay = gridLayout(v, half);
-    const halfW = PAD + half * CW - 14 + PAD;
-    const W = Math.max(900, 2 * halfW + MID);
-    const sideW = (W - MID) / 2;
-    const rows = Math.max(14, ...lay.map((it) => it.r + it.h));
-    // header: title, then the zone legend wrapped under it
+    const need = Math.max(...lay.map((it) => it.r + it.h), 0) * CH + 2 * PAD;
+    const W = Math.round(Math.max(opts.width || 0, 2 * (PAD + half * CW) - 14 * z, 600));
+    const HC = Math.round(Math.max(opts.height || 0, need, 400));
+    // title
     let out = '';
-    out += '<text x="' + W / 2 + '" y="58" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, ' + SANS + '" font-size="46" font-weight="700" font-style="italic"><tspan fill="#fca311">AMP</tspan><tspan fill="#14213d" dx="12">PLAN</tspan></text>';
-    out += '<text x="' + W / 2 + '" y="86" text-anchor="middle" font-family="' + SANS + '" font-size="15" fill="#5b666c">' + e([v.name, v.city, formatDate(v.date), info.blockStr ? info.blockStr + '.x' : ''].filter(Boolean).join(' · ')) + '</text>';
-    const used = v.zones.filter((z) => v.devices.some((d) => d.zone === z.id && isAmpModel(d.model)));
-    const items = (used.length ? used : v.zones).map((z) => ({ name: z.name, color: ZONE_HEX[z.color] }));
-    const legW = items.map((z) => 30 + Math.min(18, z.name.length) * 8 + 18);
-    let lx = 0; let ly = 112; const lines = [[]];
-    legW.forEach((w, i) => { if (lx + w > W - 80 && lines[lines.length - 1].length) { lines.push([]); lx = 0; } lines[lines.length - 1].push(i); lx += w; });
-    lines.forEach((ln) => {
-      const tot = ln.reduce((n, i) => n + legW[i], 0);
-      let x = (W - tot) / 2;
-      ln.forEach((i) => {
-        out += '<rect x="' + x + '" y="' + (ly - 11) + '" width="14" height="14" rx="2" fill="' + items[i].color + '"/>';
-        out += '<text x="' + (x + 20) + '" y="' + ly + '" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="0.5" fill="#111">' + e(items[i].name.toUpperCase().slice(0, 18)) + '</text>';
-        x += legW[i];
-      });
-      ly += 22;
-    });
-    const TAG = ly + 6;
-    const TOP = TAG + 30;
-    const H0 = rows * CH + 2 * PAD + 36;
-    // side tags and the two halves
+    out += '<text x="' + W / 2 + '" y="52" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, ' + SANS + '" font-size="42" font-weight="700" font-style="italic"><tspan fill="#fca311">AMP</tspan><tspan fill="#14213d" dx="12">PLAN</tspan></text>';
+    out += '<text x="' + W / 2 + '" y="78" text-anchor="middle" font-family="' + SANS + '" font-size="15" fill="#5b666c">' + e([v.name, v.city, formatDate(v.date), info.blockStr ? info.blockStr + '.x' : '', (v.racks || []).length + ' racks', v.devices.filter((d) => isAmpModel(d.model)).length + ' amps'].filter(Boolean).join(' · ')) + '</text>';
+    const TAG = 96;
+    const TOP = TAG + 28;
     out += '<rect x="0" y="' + TAG + '" width="70" height="24" fill="#14213d"/><text x="35" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">LEFT</text>';
     out += '<rect x="' + (W - 70) + '" y="' + TAG + '" width="70" height="24" fill="#a0570f"/><text x="' + (W - 35) + '" y="' + (TAG + 17) + '" text-anchor="middle" font-family="' + SANS + '" font-size="12" font-weight="700" letter-spacing="1.5" fill="#fff">RIGHT</text>';
-    out += '<rect x="0" y="' + TOP + '" width="' + W + '" height="' + H0 + '" fill="#efe8da"/>';
-    out += '<rect x="0" y="' + TOP + '" width="' + sideW + '" height="' + H0 + '" fill="#d4dce3"/>';
-    out += '<rect x="' + (W - sideW) + '" y="' + TOP + '" width="' + sideW + '" height="' + H0 + '" fill="#f3dcb5"/>';
-    out += '<line x1="' + sideW + '" y1="' + TOP + '" x2="' + sideW + '" y2="' + (TOP + H0) + '" stroke="#b9b3a6" stroke-width="2"/><line x1="' + (W - sideW) + '" y1="' + TOP + '" x2="' + (W - sideW) + '" y2="' + (TOP + H0) + '" stroke="#b9b3a6" stroke-width="2"/>';
-    out += '<rect x="0.5" y="' + (TOP + 0.5) + '" width="' + (W - 1) + '" height="' + (H0 - 1) + '" fill="none" stroke="#b9b3a6"/>';
-    const deck = (label, y) => '<rect x="' + (W / 2 - 62) + '" y="' + y + '" width="124" height="34" fill="#f4efe4" stroke="#a8a294" stroke-width="1.5"/><text x="' + W / 2 + '" y="' + (y + 23) + '" text-anchor="middle" font-family="' + SANS + '" font-size="18" font-weight="700" letter-spacing="7" fill="#9a958a">' + label + '</text>';
-    out += deck('STAGE', TOP + 14) + deck('FOH', TOP + H0 - 48);
+    // the plan: two halves, grid lines one amp apart counted from each outer edge
+    let g = '<rect x="0" y="0" width="' + W / 2 + '" height="' + HC + '" fill="#d3dadd"/><rect x="' + W / 2 + '" y="0" width="' + W / 2 + '" height="' + HC + '" fill="#f1dcb8"/>';
+    let lines = '';
+    for (let x = PAD; x < W / 2; x += CW) lines += 'M' + x.toFixed(1) + ' 0V' + HC;
+    for (let x = W - PAD; x > W / 2; x -= CW) lines += 'M' + x.toFixed(1) + ' 0V' + HC;
+    for (let y = PAD; y < HC; y += CH) lines += 'M0 ' + y.toFixed(1) + 'H' + W;
+    g += '<path d="' + lines + '" stroke="#1d1f1c" stroke-opacity="0.08" stroke-width="1" fill="none"/>';
+    g += '<line x1="' + W / 2 + '" y1="0" x2="' + W / 2 + '" y2="' + HC + '" stroke="#1d1f1c" stroke-opacity="0.25" stroke-width="1.5"/>';
+    g += '<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (HC - 1) + '" fill="none" stroke="#b9b3a6"/>';
+    const deck = (label, y) => '<rect x="' + (W / 2 - 60) + '" y="' + y + '" width="120" height="34" fill="#f4efe4" fill-opacity="0.75" stroke="#a8a294" stroke-width="1.5"/><text x="' + W / 2 + '" y="' + (y + 23.5) + '" text-anchor="middle" font-family="' + SANS + '" font-size="20" font-weight="700" letter-spacing="7" fill="#9a958a">' + label + '</text>';
+    g += deck('STAGE', 16) + deck('FOH', HC - 52);
     const chip = (d, x, y, w) => {
-      const z = zmap.get(d.zone);
-      const c = z ? z.color : 8;
+      const zz = zmap.get(d.zone);
+      const c = zz ? zz.color : 8;
       return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="24" rx="2" fill="' + ZONE_HEX[c] + '"/>' +
         '<text x="' + (x + w / 2) + '" y="' + (y + 16.5) + '" text-anchor="middle" font-family="' + MONO + '" font-size="12.5" font-weight="700" fill="' + (c === 3 ? '#0b0b0b' : '#fff') + '">' + e(slotLabel(v, d, info).slice(0, 16)) + '</text>';
     };
     for (const it of lay) {
       const x = it.side === 'L' ? PAD + it.c * CW : W - PAD - it.c * CW - BW;
-      const y = TOP + PAD + it.r * CH;
-      const h = it.h * CH - 8;
-      out += '<rect x="' + x + '" y="' + y + '" width="' + BW + '" height="' + h + '" rx="9" fill="#e7dfcc" stroke="#9c937f"/>';
-      out += '<rect x="' + (x + 7) + '" y="' + (y + 7) + '" width="' + (BW - 14) + '" height="' + (h - 14) + '" rx="4" fill="#1d2722"/>';
+      const y = PAD + it.r * CH;
+      const h = it.h * 30 - 8; // drawn at 100% inside, then scaled like the page does
+      let r = '<rect x="0" y="0" width="128" height="' + h + '" rx="9" fill="#e7dfcc" stroke="#9c937f"/>';
+      r += '<rect x="7" y="7" width="114" height="' + (h - 14) + '" rx="4" fill="#1d2722"/>';
       const name = it.rack ? it.rack.name : (it.dev.name || modelOf(it.dev.model).label);
       const sub = it.rack ? it.rack.type || (rackModel(v, it.rack) || '') : modelOf(it.dev.model).label;
-      out += '<text x="' + (x + BW / 2) + '" y="' + (y + 22) + '" text-anchor="middle" font-family="' + MONO + '" font-size="9.5" font-weight="700" letter-spacing="0.8" fill="#9fc29a">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
-      out += '<text x="' + (x + BW / 2) + '" y="' + (y + 32) + '" text-anchor="middle" font-family="' + MONO + '" font-size="8" fill="#6d8070">' + e(String(sub).slice(0, 22)) + '</text>';
+      r += '<text x="64" y="22" text-anchor="middle" font-family="' + MONO + '" font-size="9.5" font-weight="700" letter-spacing="0.8" fill="#9fc29a">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
+      r += '<text x="64" y="32" text-anchor="middle" font-family="' + MONO + '" font-size="8" fill="#6d8070">' + e(String(sub).slice(0, 22)) + '</text>';
       if (it.rack) {
         rackSlots(v, it.rack).forEach((d, k) => {
-          const sy = y + 38 + k * 28;
-          if (d) out += chip(d, x + 14, sy, BW - 28);
-          else out += '<rect x="' + (x + 14.5) + '" y="' + (sy + 0.5) + '" width="' + (BW - 29) + '" height="23" fill="none" stroke="#56685a" stroke-dasharray="3 3"/><text x="' + (x + BW / 2) + '" y="' + (sy + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11" fill="#6d8070">free</text>';
+          const sy = 38 + k * 28;
+          if (d) r += chip(d, 14, sy, 100);
+          else r += '<rect x="14.5" y="' + (sy + 0.5) + '" width="99" height="23" fill="none" stroke="#56685a" stroke-dasharray="3 3"/><text x="64" y="' + (sy + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11" fill="#6d8070">free</text>';
         });
-      } else out += chip(it.dev, x + 14, y + 38, BW - 28);
+      } else r += chip(it.dev, 14, 38, 100);
+      g += '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + z + ')">' + r + '</g>';
     }
-    const H = Math.ceil(TOP + H0 + 20);
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><rect width="' + W + '" height="' + H + '" fill="#fff"/>' + out + '</svg>';
+    out += '<g transform="translate(0 ' + TOP + ')">' + g + '</g>';
+    // every zone with its colour, under the plan (as on the page)
+    const amps = v.devices.filter((d) => isAmpModel(d.model));
+    const items = v.zones.map((zz) => ({ name: zz.name, color: ZONE_HEX[zz.color] }));
+    if (amps.some((d) => !zmap.has(d.zone))) items.push({ name: 'No zone', color: ZONE_HEX[8] });
+    const legW = items.map((it) => 26 + Math.min(20, it.name.length) * 8.6 + 26);
+    let lx = 0; const rowsL = [[]];
+    legW.forEach((w, i) => { if (lx + w > W - 40 && rowsL[rowsL.length - 1].length) { rowsL.push([]); lx = 0; } rowsL[rowsL.length - 1].push(i); lx += w; });
+    let ly = TOP + HC + 34;
+    rowsL.forEach((ln) => {
+      const tot = ln.reduce((n, i) => n + legW[i], 0);
+      let x = (W - tot) / 2;
+      ln.forEach((i) => {
+        out += '<rect x="' + x + '" y="' + (ly - 13) + '" width="16" height="16" rx="2" fill="' + items[i].color + '"/>';
+        out += '<text x="' + (x + 24) + '" y="' + ly + '" font-family="' + SANS + '" font-size="13" font-weight="700" letter-spacing="0.6" fill="#1d1f1c">' + e(items[i].name.toUpperCase().slice(0, 20)) + '</text>';
+        x += legW[i];
+      });
+      ly += 26;
+    });
+    const H = Math.ceil(ly);
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><rect width="' + W + '" height="' + H + '" fill="#ece6d8"/>' + out + '</svg>';
   }
+
 
 
   const api = {
@@ -4298,6 +4306,12 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       },
     });
   }
+  // the plan's size and zoom as on screen, so the picture matches what the person sees
+  function planShot() {
+    const g = gridGeom();
+    const sz = $('.pcanvas .psizer');
+    return { half: g.half, zoom: g.z, width: g.W, height: sz ? sz.offsetHeight + 2 : CANVAS_H };
+  }
   function svgToPng(svg) {
     return new Promise((resolve, reject) => {
       const mm = /width="(\d+)" height="(\d+)"/.exec(svg);
@@ -4307,10 +4321,12 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       img.onload = () => {
         try {
           const c = document.createElement('canvas');
-          c.width = w * 2;
-          c.height = h * 2;
+          // the screen's own pixel density: 1 on a normal monitor, 2 on Retina / phones
+          const k = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+          c.width = Math.round(w * k);
+          c.height = Math.round(h * k);
           const ctx = c.getContext('2d');
-          ctx.scale(2, 2);
+          ctx.scale(k, k);
           ctx.drawImage(img, 0, 0, w, h);
           c.toBlob((b) => (b ? resolve(b) : reject(new Error('png'))), 'image/png');
         } catch (e) { reject(e); }
@@ -4917,7 +4933,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       const v = cur();
       if (!v) return;
       const base = (v.name || 'venue').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'venue';
-      svgToPng(C.planSvg(v, { half: gridGeom().half })).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
+      svgToPng(C.planSvg(v, planShot())).then((blob) => { saveFile(base + '-amp-plan.png', blob); }, () => toast('Couldn’t draw the picture here. Use Export, then the .svg version.'));
     },
     'psel-clear': () => { S.psel.clear(); updateSel(); },
     'import-sv': () => { if (S.readOnly) return toast('You can view these plans but not change them.'); closeModal(); $('#sv-file').click(); },
@@ -5901,8 +5917,8 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
         const base = slug(v.name);
         const kind = b.dataset.x;
         if (kind === 'copy') { copyText(C.toDelimited(v, '\t'), 'Table copied. Paste it into a spreadsheet or email.'); return; }
-        if (kind === 'svg') { saveFile(base + '-amp-plan.svg', C.planSvg(v, { half: gridGeom().half })); return; }
-        if (kind === 'png') { svgToPng(C.planSvg(v, { half: gridGeom().half })).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
+        if (kind === 'svg') { saveFile(base + '-amp-plan.svg', C.planSvg(v, planShot())); return; }
+        if (kind === 'png') { svgToPng(C.planSvg(v, planShot())).then((blob) => saveFile(base + '-amp-plan.png', blob), () => toast('Couldn’t draw the picture here. Try the .svg version.')); return; }
         if (kind === 'sheet') saveFile(base + '-patch-sheet.html', C.patchSheet(v));
         else if (kind === 'csv') saveFile(base + '-ip-plan.csv', '﻿' + C.toDelimited(v, sep));
         else if (kind === 'json') saveFile(base + '-backup.json', C.bundle([v]));
