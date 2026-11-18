@@ -167,7 +167,7 @@ def run(p, label, mock, dark=False):
     page.locator('.plan').screenshot(path=str(SHOTS / f'{label}-3c-racks-after.png'))
     page.add_style_tag(content='#toasts{display:block!important}')
     if mock:
-        page.click('[data-act="export"]')
+        page.click('.more-menu > summary'); page.click('[data-act="export"]')
         page.wait_for_selector('.export-list')
         page.click('[data-x="png"]')
         page.wait_for_timeout(600)
@@ -260,7 +260,7 @@ def run(p, label, mock, dark=False):
     print(label, 'after rebase first ip:', first_ip, '| pill:', page.inner_text('.pill').replace('\n', ' | '))
 
     # export modal
-    page.click('[data-act="export"]')
+    page.click('.more-menu > summary'); page.click('[data-act="export"]')
     page.wait_for_selector('.export-list')
     page.screenshot(path=str(SHOTS / f'{label}-7-export.png'))
     if mock:

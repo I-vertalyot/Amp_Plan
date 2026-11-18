@@ -1186,3 +1186,9 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .add-R .add-pop { right: 0; }
 .add-pop button { text-align: left; border: 0; background: transparent; padding: 8px 10px; font: 500 14px var(--font-body); color: var(--ink); border-radius: 2px; cursor: pointer; }
 .add-pop button:hover, .add-pop button:focus-visible { background: var(--accent-soft); }
+
+/* ⋮ menu in the venue header */
+.more-menu .more-btn { width: 40px; padding: 0; justify-content: center; }
+.more-menu .more-btn svg { width: 4px; height: 16px; fill: currentColor; }
+.more-menu .add-pop { top: calc(100% + 6px); bottom: auto; right: 0; left: auto; }
+.add-pop button.danger { color: #9b2a1f; }

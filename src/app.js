@@ -472,9 +472,12 @@
       '<label class="sr-only" for="v-name">Venue name</label><input id="v-name" class="vname" data-vf="name" value="' + esc(v.name) + '" maxlength="120" autocomplete="off"' + ro + '>' +
       '<div class="vmeta"><label class="vmeta-field" for="v-date"><span>Show date</span><input id="v-date" type="date" data-vf="date" value="' + esc(v.date) + '"' + ro + '></label>' +
       '<label class="vmeta-field grow" for="v-city"><span>Venue</span><input id="v-city" data-vf="city" value="' + esc(v.city) + '" maxlength="120" placeholder="Hall, city" autocomplete="off"' + ro + '></label></div></div>' +
-      '<div class="vhead-actions"><button class="btn" data-act="export">Export…</button>' +
-      (S.readOnly ? '' : '<button class="btn" data-act="dup-venue">Duplicate</button><button class="btn btn-quiet danger" data-act="del-venue">Delete</button>') +
-      '</div></header>';
+      // Export, Duplicate and Delete live in one ⋮ menu
+      '<div class="vhead-actions"><details class="add-menu more-menu"><summary class="btn more-btn" aria-label="More actions for this venue" title="More">' +
+      '<svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2.5" r="1.6"/><circle cx="2" cy="8" r="1.6"/><circle cx="2" cy="13.5" r="1.6"/></svg></summary><div class="add-pop" role="menu">' +
+      '<button type="button" role="menuitem" data-act="export">Export…</button>' +
+      (S.readOnly ? '' : '<button type="button" role="menuitem" data-act="dup-venue">Duplicate venue</button><button type="button" role="menuitem" class="danger" data-act="del-venue">Delete venue</button>') +
+      '</div></details></div></header>';
   }
 
   // ---------------------------------------------------------------- LCD digits (digital-watch style)
