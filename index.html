@@ -3577,7 +3577,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
   function devicesHtml(v, a) {
     if (S.devView === 'racks') {
       const tools = '<div class="toolbar"><div class="tb-left">' + viewSwitch() +
-        (S.readOnly ? '' : (v.devices.some((d) => C.isAmpModel(d.model) && !C.rackById(v, d.rack)) && (v.racks || []).length ? '<button class="btn" data-act="rack-pack">Pack single amps into racks</button>' : '') + (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
+        (S.readOnly ? '' : (emptyRacks(v).length ? '<button class="btn btn-quiet danger" data-act="rack-del-empty">Delete ' + C.plural(emptyRacks(v).length, 'empty rack') + '</button>' : '') + '<button class="btn btn-quiet" data-act="zones">Edit zones</button>') +
         '</div></div>';
       return tools + planHtml(v, a);
     }

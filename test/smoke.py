@@ -120,9 +120,7 @@ def run(p, label, mock, dark=False):
     page.click('.modal-f .btn-primary')
     page.wait_for_timeout(200)
     print(label, 'tray after spare:', page.locator('.psingle .pslot[data-dev]').all_inner_texts())
-    page.click('[data-act="rack-pack"]')
-    page.wait_for_timeout(200)
-    print(label, 'after pack:', racks_txt()[-2:], '| tray:', page.locator('.psingle .pslot[data-dev]').count())
+    print(label, 'pack button gone:', page.locator('[data-act="rack-pack"]').count() == 0)
     # unlink one Main R amp to Kara II on its own
     rack('RAK 3').locator('.pslot[data-dev]').nth(1).click()
     page.wait_for_selector('#ae-unlock')
