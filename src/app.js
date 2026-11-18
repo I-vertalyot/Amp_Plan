@@ -25,7 +25,7 @@
   const S = {
     mode: 'init', db: null, user: null, canWrite: null, dl: undefined, unsub: null,
     readOnly: false, loaded: false, confirmed: false, slow: false, error: '', note: '', saveError: '',
-    venues: [], cur: '', tab: 'speakers', devView: prefs.devView === 'list' ? 'list' : 'racks', drag: null, zone: 'all', q: '', vq: '', sel: new Set(), mapNet: 'pri',
+    venues: [], cur: '', tab: 'speakers', open: {}, devView: prefs.devView === 'list' ? 'list' : 'racks', drag: null, zone: 'all', q: '', vq: '', sel: new Set(), mapNet: 'pri',
     dirty: new Set(), saving: {}, recent: {}, deleted: new Set(), undo: [], pendingRemote: false,
     acache: new WeakMap(), mapTips: [], modal: null,
   };
@@ -416,9 +416,11 @@
     afterTab();
   }
   function tabBody(v, a) {
-    if (S.tab === 'map') return mapHtml(v, a);
-    if (S.tab === 'checks') return checksHtml(v, a);
-    if (S.tab === 'rules') return rulesHtml();
+    if (S.tab === 'checks') {
+      // one tab for everything about getting the addresses right: the checks, then the IP map and the rules, folded
+      const sec = (id, title, body) => '<details class="fold" data-sec="' + id + '"' + (S.open[id] ? ' open' : '') + '><summary>' + title + '</summary><div class="fold-body">' + body + '</div></details>';
+      return checksHtml(v, a) + sec('map', 'IP map', mapHtml(v, a)) + sec('rules', 'L-Acoustics network rules', rulesHtml());
+    }
     if (S.tab === 'speakers') return speakersHtml(v);
     return devicesHtml(v, a);
   }
@@ -436,7 +438,7 @@
     const tabs = $('#tabs');
     if (tabs) tabs.outerHTML = tabsHtml(v, a);
     if (S.tab === 'devices' && S.devView === 'list') updateRows(v, a);
-    else if (S.tab !== 'rules') { const tb = $('#tab-body'); if (tb) tb.innerHTML = tabBody(v, a); }
+    else { const tb = $('#tab-body'); if (tb) tb.innerHTML = tabBody(v, a); }
     renderRail();
   }
 
@@ -553,9 +555,8 @@
     const tab = (id, label) => '<button class="tab" role="tab" id="tab-' + id + '" data-act="tab" data-tab="' + id + '" aria-selected="' + (S.tab === id) + '">' + label + '</button>';
     return '<nav class="tabs" id="tabs" role="tablist" aria-label="Plan views">' +
       tab('speakers', 'Speakers & amps <span class="count">' + C.speakerPlan(v).enclosures + '</span>') +
-      tab('devices', 'Devices & IPs <span class="count">' + s.devices + '</span>') + tab('map', 'IP map') +
-      tab('checks', 'Checks <span class="count' + (s.errors ? ' sev-error' : s.warns ? ' sev-warn' : '') + '">' + n + '</span>') +
-      tab('rules', 'L-Acoustics rules') + '</nav>';
+      tab('devices', 'Devices & IPs <span class="count">' + s.devices + '</span>') +
+      tab('checks', 'Checks <span class="count' + (s.errors ? ' sev-error' : s.warns ? ' sev-warn' : '') + '">' + n + '</span>') + '</nav>';
   }
 
   // ---------------------------------------------------------------- devices tab
@@ -1007,7 +1008,7 @@
         (n ? '<div class="pgrid" style="--cols:' + Math.max(1, Math.ceil(n / 3)) + '">' + items.map((it) => (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev))).join('') + '</div>' : '<p class="pside-empty">No racks</p>') +
         (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>') + '</section>';
     }).join('');
-    const hint = ro ? '' : '<p class="plan-hint">Click an amp to pick its preset and the last number of its IP. Drag racks and amps anywhere: they snap to a grid one amp in size. Drop an amp on a free slot to put it in a rack. Hold Ctrl while dropping to copy.</p>';
+    const hint = ro ? '' : '<p class="plan-hint">Click an amp to change it. Drag racks and amps to move them; hold Ctrl to copy.</p>';
     const callout = !ro && !racks.length && loose.length
       ? '<div class="plan-callout"><div><b>' + esc(C.plural(loose.length, 'amp')) + ' not in racks yet</b><span>Pack into racks puts each zone’s amps on its side of the stage, filling L-Acoustics racks of 3. You can move them afterwards.</span></div><button type="button" class="btn btn-primary" data-act="rack-pack">Pack into racks</button></div>'
       : '';
@@ -1077,11 +1078,14 @@
     // only racks and the squares scale; the work area keeps its width, so zooming out opens up columns
     const items = lay.map((it) => '<div class="pcell" data-key="' + esc(it.key) + '" style="left:' + leftPx(it) + 'px;top:' + it.r * g.ch + 'px;width:' + 128 * g.z + 'px;height:' + (it.h * CELL_H - 8) * g.z + 'px">' +
       '<div class="pcell-in" style="zoom:' + g.z + ';height:' + (it.h * CELL_H - 8) + 'px">' + (it.rack ? rackBoxHtml(v, a, it.rack) : singleHtml(v, a, it.dev)) + '</div></div>').join('');
-    const adds = (sd) => (ro ? '' : '<div class="pside-add"><button type="button" class="btn-mini" data-act="amp-new" data-side="' + sd + '">+ Amp in rack</button><button type="button" class="btn-mini" data-act="amp-new" data-loose="1" data-side="' + sd + '">+ Single amp</button><button type="button" class="btn-mini" data-act="rack-add" data-side="' + sd + '">+ Rack</button></div>');
+    const adds = (sd) => (ro ? '' : '<details class="add-menu add-' + sd + '"><summary class="btn-mini">+ Add</summary><div class="add-pop" role="menu">' +
+      '<button type="button" role="menuitem" data-act="amp-new" data-side="' + sd + '">Amp in a rack</button>' +
+      '<button type="button" role="menuitem" data-act="amp-new" data-loose="1" data-side="' + sd + '">Single amp</button>' +
+      '<button type="button" role="menuitem" data-act="rack-add" data-side="' + sd + '">Empty rack</button></div></details>');
     const zoomBar = '<div class="pzoom" role="group" aria-label="Zoom the racks"><button type="button" class="btn-mini" data-act="plan-zoom" data-z="-1" aria-label="Zoom out">−</button>' +
       '<button type="button" class="btn-mini pzoom-val" data-act="plan-zoom" data-z="1x" title="Back to 100%">' + Math.round(g.z * 100) + '%</button>' +
       '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="+1" aria-label="Zoom in">+</button>' +
-      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen">Fit</button><span class="muted">Ctrl + mouse wheel zooms the racks too</span></div>';
+      '<button type="button" class="btn-mini" data-act="plan-zoom" data-z="fit" title="Make every rack fit on screen (Ctrl + mouse wheel zooms too)">Fit</button></div>';
     const halfW = g.half * g.cw;
     return '<div class="pgridwrap">' + zoomBar +
       '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
@@ -1235,18 +1239,20 @@
         '<div class="field"><label for="ae-preset">Preset (speaker)</label>' + locked + presetPick + '<small id="ae-preset-hint"></small></div>' +
         '<div class="field"><label for="ae-ip">IP address, last number</label><div class="join"><span class="prefix mono" id="ae-prefix">' + esc((b0.str || i.blockStr || '192.168.1') + '.') + '</span><select id="ae-ip" class="mono">' + hostOptions(v, a, d, host0, model0) + '</select></div>' + outside + '<small id="ae-ip-hint"></small></div>' +
         '<div class="field"><label for="ae-zone">Zone (colour)</label><select id="ae-zone"' + (g ? ' disabled' : '') + '>' + zoneOptions(v, zone0, true) + '</select></div>' +
+        '</div><details class="fold fold-sm"' + (S.open.ampMore ? ' open' : '') + ' data-sec="ampMore"><summary>More: amplifier, rack, name' + (isNew ? '' : ', delete') + '</summary><div class="form-grid">' +
         '<div class="field"><label for="ae-model">Amplifier</label><select id="ae-model"' + (g ? ' disabled' : '') + '>' + ampOpts + '</select></div>' +
         '<div class="field"><label for="ae-pos">Rack and slot</label><select id="ae-pos">' + positionOptions(v, a, d, rack0, slot0) + '</select></div>' +
         '<div class="field"><label for="ae-name">Name</label><input id="ae-name" maxlength="80" value="' + esc(d ? d.name : '') + '" placeholder="Named automatically" autocomplete="off"></div>' +
-        '</div>',
-      actions: (isNew ? [] : [{ label: 'Delete amp', kind: 'quiet danger', left: true, onClick: () => { deleteDevices([d.id]); } }])
-        .concat([{ label: 'Cancel' }, { label: isNew ? 'Add amp' : 'Save', kind: 'primary', onClick: (m) => saveAmp(v, d, m, g, host0) }]),
+        '</div>' + (isNew ? '' : '<button type="button" class="btn btn-quiet danger" id="ae-del">Delete this amp</button>') + '</details>',
+      actions: [{ label: 'Cancel' }, { label: isNew ? 'Add amp' : 'Save', kind: 'primary', onClick: (m) => saveAmp(v, d, m, g, host0) }],
       onOpen: (m) => {
         const ps = $('#ae-preset', m);
         const cu = $('#ae-custom', m);
         const mo = $('#ae-model', m);
         const ipSel = $('#ae-ip', m);
         const linked = () => g && !m._unlink;
+        const del = $('#ae-del', m);
+        if (del) del.addEventListener('click', () => { closeModal(); deleteDevices([d.id]); });
         const hint = () => {
           const p = linked() ? g.model : ps.value !== 'Custom' ? ps.value : '';
           const am = linked() ? g.amp : mo.value;
@@ -1857,6 +1863,8 @@
     document.addEventListener('mouseout', onTipOut);
     document.addEventListener('mousemove', onTipMove);
     document.addEventListener('dragstart', onDragStart);
+    // remember which folded sections are open, so a redraw keeps them open
+    document.addEventListener('toggle', (e) => { const d = e.target; if (d && d.dataset && d.dataset.sec) S.open[d.dataset.sec] = d.open; }, true);
     let rsz = null;
     window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(syncGridWidth, 150); });
     // Ctrl + wheel over the plan grid zooms it instead of the page
@@ -1981,6 +1989,8 @@
   };
 
   function onClick(e) {
+    // the + Add menus close when an item is picked or anything else is clicked
+    document.querySelectorAll('details.add-menu[open]').forEach((d) => { if (!d.contains(e.target) || (e.target.closest && e.target.closest('.add-pop button'))) d.open = false; });
     if (e.target.closest('#modal-root')) return;
     const t = e.target.closest('[data-act]');
     if (!t || t.disabled) return;
@@ -2306,6 +2316,8 @@
   // ---------------------------------------------------------------- device actions
   function setTab(t) {
     if (['speakers', 'devices', 'map', 'checks', 'rules'].indexOf(t) < 0) return;
+    // the IP map and the rules now live inside Checks
+    if (t === 'map' || t === 'rules') { S.open[t] = true; t = 'checks'; }
     S.tab = t;
     renderTab();
     const tb = $('#tab-' + t);

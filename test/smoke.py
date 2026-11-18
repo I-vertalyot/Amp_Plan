@@ -199,7 +199,9 @@ def run(p, label, mock, dark=False):
     page.wait_for_timeout(150)
 
     # map tab
-    page.click('#tab-map')
+    page.click('#tab-checks')
+    print(label, 'tabs:', page.locator('#tabs .tab').count())
+    page.click('details[data-sec="map"] > summary')
     page.wait_for_selector('.ipgrid')
     page.hover('.ipc[data-h="11"]')
     page.wait_for_timeout(100)
@@ -277,7 +279,9 @@ def run(p, label, mock, dark=False):
     page.click('#ze-add')
     page.click('.modal-f .btn-primary')
     page.wait_for_timeout(150)
-    page.click('#tab-rules')
+    page.click('#tab-checks')
+    if not page.locator('details[data-sec="rules"]').get_attribute('open') is not None:
+        page.click('details[data-sec="rules"] > summary')
     page.wait_for_selector('.rules')
     page.screenshot(path=str(SHOTS / f'{label}-8-rules.png'))
 
