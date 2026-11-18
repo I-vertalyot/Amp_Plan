@@ -471,7 +471,7 @@ t('plan grid: steps a third of a rack, counted from each side edge', () => {
   const r2 = v.racks[1];
   C.placeOnGrid(v, 'r:' + r2.id, 'R', 7, 1, 4 * S);
   const p2 = C.gridLayout(v, 4 * S).find((x) => x.key === 'r:' + r2.id);
-  assert.ok(p2.r >= r1.size + 2, 'slides below the rack already there');
+  assert.ok(p2.r >= r1.size + 1, 'slides below the rack already there');
   // a whole rack over: side by side at the same height
   C.placeOnGrid(v, 'r:' + r2.id, 'R', 6 + S, 0, 4 * S);
   assert.strictEqual(C.gridLayout(v, 4 * S).find((x) => x.key === 'r:' + r2.id).r, 0);

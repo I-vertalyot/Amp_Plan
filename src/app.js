@@ -961,7 +961,9 @@
     const h = hostOf(d);
     if (L === 'fronts') return '<i class="pf-stripe" aria-hidden="true"></i><span class="pf-txt"><b>' + esc(pre) + '</b><small>' + esc(C.modelOf(d.model).label) + '</small></span><span class="pf-lcd">' + (h != null ? '.' + h : '--') + '</span>';
     if (L === 'night') return '<i class="pf-stripe" aria-hidden="true"></i><span class="pn-top"><b>' + esc(pre) + '</b><span class="pn-st st-' + esc(d.status) + '"><i aria-hidden="true"></i>' + esc(C.STATUS_LABEL[d.status] || '') + '</span></span><span class="pn-ip">' + (h != null ? '.' + h : '—') + '</span>';
-    return esc(C.slotLabel(v, d, a.info));
+    // compact rack style: zone stripe on the left (CSS), label, short model on the right
+    const short = String(C.modelOf(d.model).label).replace(/^LA/, '');
+    return '<span class="ps-lab">' + esc(C.slotLabel(v, d, a.info)) + '</span><small class="ps-m">' + esc(short) + '</small>';
   }
   function ampChip(v, a, d, extra) {
     const L = layoutOf();
@@ -970,7 +972,7 @@
     const tip = [d.name, C.modelOf(d.model).label, d.ip || 'no IP yet'].filter(Boolean).join(' · ');
     const c = zoneColorOf(v, d);
     const vars = '--zc:var(--z' + c + ');--zi:var(--z' + (c === 3 ? '3' : '') + '-ink)';
-    const paint = L === 'fronts' || L === 'night' ? vars : vars + ';background:var(--z' + c + ');color:var(--z' + (c === 3 ? '3' : '') + '-ink)';
+    const paint = vars;
     return '<div class="pslot' + (sev === 'error' ? ' p-err' : sev === 'warn' ? ' p-warn' : '') + '" role="button" tabindex="0"' + (S.readOnly ? '' : ' draggable="true"') +
       ' data-act="amp-edit" data-dev="' + esc(d.id) + '"' + (extra || '') + ' style="' + paint + '" title="' + esc(tip) + '" aria-label="' + esc(lab + '. ' + tip) + '">' + slotInner(v, a, d, L) + '</div>';
   }
@@ -1662,8 +1664,8 @@
   }
   function dragRows() {
     const v = cur();
-    if (S.dragRack) { const r = v && C.rackById(v, S.dragRack); return r ? r.size + 2 : 5; }
-    return 3;
+    if (S.dragRack) { const r = v && C.rackById(v, S.dragRack); return r ? r.size + 1 : 4; }
+    return 2;
   }
   function gridDrop(e, canvas) {
     const cell = gridCell(e, canvas);

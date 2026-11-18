@@ -1236,3 +1236,26 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 :root[data-skin="retro"] .prack-box { border-width: 3px; border-radius: 3px; padding: 9px 9px; box-shadow: 0 0 0 1px var(--putty-dk), inset 0 0 14px rgba(0,0,0,.6), 0 2px 0 rgba(0,0,0,.15); }
 :root[data-skin="retro"] .rack { border-width: 3px; border-radius: 3px; }
 .pcell.psel { border-radius: 4px; }
+
+/* ---- compact rack (style C): dark rack, amps as dark rows with a zone-colour stripe on the left */
+:root[data-skin="retro"] .pcanvas .prack-box {
+  background: #1b1d1f; border: 1px solid #000; border-radius: 3px; padding: 4px; gap: 3px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.25); justify-content: flex-start;
+}
+.pcanvas .prack-name { padding: 1px 0 2px; min-height: 0; }
+.pcanvas .prack-name small { font: 500 8px var(--font-mono); color: #8a8f93; letter-spacing: .06em; opacity: 1; }
+.pcanvas .prack-name span { font: 500 9px var(--font-mono); color: #c9cdd0; letter-spacing: .06em; }
+:root[data-skin] .plan .pcanvas .pslot[data-dev], .pcanvas .pslot { background: #26292c; color: #eee; border: 0; border-left: 6px solid var(--zc, #8b979d); border-radius: 2px;
+  display: flex; align-items: center; height: 24px; min-height: 24px; padding: 0 5px 0 0; box-shadow: none; font: 500 11px var(--font-mono); }
+.pcanvas .pslot .ps-lab { flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pcanvas .pslot .ps-m { font: 400 8px var(--font-mono); color: #888; }
+:root[data-skin] .plan .pcanvas .pslot[data-dev]:hover, .pcanvas .pslot:hover { background: #30343a; background-image: none; }
+.pcanvas .pslot.p-empty { background: transparent; border: 1px dashed #4a4f53; color: #6f7579; justify-content: center; font-weight: 400; padding: 0; }
+.pcanvas .pslot.p-err { box-shadow: inset 0 0 0 2px #d84b3a; }
+.pcanvas .pslot.p-warn { box-shadow: inset 0 0 0 2px #e0b23a; }
+.pcanvas .prack-foot { font: 400 8px var(--font-mono); color: #8a8f93; text-align: center; }
+
+/* single amps: one line on top (name), the amp row under it */
+.pcanvas .psingle .prack-name small { display: none; }
+.pcanvas .pslot .ps-lab { font-weight: 700; }
+.pcanvas .prack-name small { color: #8a8f93 !important; }

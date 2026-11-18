@@ -435,7 +435,7 @@
   // ---- the plan grid: one cell = one amp (a rack's width, one slot's height). A position is counted
   // from its side's outer edge: Left racks from the left edge, Right racks from the right edge, so when
   // the plan is zoomed out the extra columns open up in the middle and nothing jumps sides.
-  // A rack is size + 2 cells tall (its name on top), a single amp 3.
+  // A rack is size + 1 cells tall (its type on top), a single amp 2.
   const GRID_COLS = 8;
   // Columns are a third of a rack wide, so racks can sit a third of a rack apart. A rack or single amp
   // takes GRID_SPAN columns. Positions saved as v:3 count these small columns; v:2 counted whole racks.
@@ -459,7 +459,8 @@
     }
     obj.pos = { c: obj.pos.c * GRID_SPAN, r: obj.pos.r, v: POS_V };
   }
-  const itemRows = (it) => (it.rack ? it.rack.size + 2 : 3);
+  // compact racks: a rack is one cell taller than its amps (the header), a single amp 2 cells
+  const itemRows = (it) => (it.rack ? it.rack.size + 1 : 2);
   const overlaps = (a, c, r, h) => a.c < c + GRID_SPAN && c < a.c + GRID_SPAN && r < a.r + a.h && a.r < r + h;
   const halfOf = (half) => Math.max(GRID_SPAN, half || (GRID_COLS / 2) * GRID_SPAN);
   const clampC = (c, half) => Math.max(0, Math.min(half - GRID_SPAN, Math.round(c)));
@@ -508,7 +509,7 @@
     const me = lay.find((it) => it.key === key);
     const obj = me ? me.rack || me.dev : key[0] === 'r' ? rackById(v, key.slice(2)) : v.devices.find((d) => d.id === key.slice(2));
     if (!obj) return false;
-    const h = me ? me.h : key[0] === 'r' ? obj.size + 2 : 3;
+    const h = me ? me.h : key[0] === 'r' ? obj.size + 1 : 2;
     c = clampC(c, half);
     r = Math.max(0, Math.round(r));
     const others = lay.filter((it) => it.key !== key && it.side === side);
@@ -1530,30 +1531,32 @@
     g += '<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (HC - 1) + '" fill="none" stroke="#b9b3a6"/>';
     const deck = (label, y) => '<rect x="' + (W / 2 - 60) + '" y="' + y + '" width="120" height="34" fill="#f4efe4" fill-opacity="0.75" stroke="#a8a294" stroke-width="1.5"/><text x="' + W / 2 + '" y="' + (y + 23.5) + '" text-anchor="middle" font-family="' + SANS + '" font-size="20" font-weight="700" letter-spacing="7" fill="#9a958a">' + label + '</text>';
     g += deck('STAGE', 16) + deck('FOH', HC - 52);
+    // compact rack style: dark row, zone colour as a stripe on the left, short model on the right
     const chip = (d, x, y, w) => {
       const zz = zmap.get(d.zone);
       const c = zz ? zz.color : 8;
-      return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="24" rx="2" fill="' + ZONE_HEX[c] + '"/>' +
-        '<text x="' + (x + w / 2) + '" y="' + (y + 16.5) + '" text-anchor="middle" font-family="' + MONO + '" font-size="12.5" font-weight="700" fill="' + (c === 3 ? '#0b0b0b' : '#fff') + '">' + e(slotLabel(v, d, info).slice(0, 16)) + '</text>';
+      return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="24" rx="2" fill="#26292c"/>' +
+        '<rect x="' + x + '" y="' + y + '" width="6" height="24" fill="' + ZONE_HEX[c] + '"/>' +
+        '<text x="' + (x + 6 + (w - 26) / 2) + '" y="' + (y + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11.5" font-weight="700" fill="#eeeeee">' + e(slotLabel(v, d, info).slice(0, 14)) + '</text>' +
+        '<text x="' + (x + w - 4) + '" y="' + (y + 15.5) + '" text-anchor="end" font-family="' + MONO + '" font-size="8" fill="#888888">' + e(String(modelOf(d.model).label).replace(/^LA/, '')) + '</text>';
     };
     for (const it of lay) {
       const x = it.side === 'L' ? PAD + it.c * CW : W - PAD - it.c * CW - BW;
       const y = PAD + it.r * CH;
       const h = it.h * 30 - 8; // drawn at 100% inside, then scaled like the page does
-      let r = '<rect x="0" y="0" width="128" height="' + h + '" rx="3" fill="#e7dfcc" stroke="#9c937f"/>';
-      r += '<rect x="3" y="3" width="122" height="' + (h - 6) + '" rx="1.5" fill="#1d2722"/>';
+      let r = '<rect x="0.5" y="0.5" width="127" height="' + (h - 1) + '" rx="3" fill="#1b1d1f" stroke="#000"/>';
       const name = it.rack ? it.rack.name : (it.dev.name || modelOf(it.dev.model).label);
       const sub = it.rack ? it.rack.type || (rackModel(v, it.rack) || '') : modelOf(it.dev.model).label;
       // racks show only their type (the rack's name is left out); single amps show name and model
-      if (!it.rack) r += '<text x="64" y="22" text-anchor="middle" font-family="' + MONO + '" font-size="9.5" font-weight="700" letter-spacing="0.8" fill="#9fc29a">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
-      r += '<text x="64" y="' + (it.rack ? 26 : 32) + '" text-anchor="middle" font-family="' + MONO + '" font-size="8" fill="#6d8070">' + e(String(sub || 'Rack').slice(0, 22)) + '</text>';
+      if (!it.rack) r += '<text x="64" y="14" text-anchor="middle" font-family="' + MONO + '" font-size="9" font-weight="700" letter-spacing="0.6" fill="#c9cdd0">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
+      else r += '<text x="64" y="14" text-anchor="middle" font-family="' + MONO + '" font-size="8" letter-spacing="0.5" fill="#8a8f93">' + e(String(sub || 'Rack').slice(0, 22)) + '</text>';
       if (it.rack) {
         rackSlots(v, it.rack).forEach((d, k) => {
-          const sy = 38 + k * 28;
-          if (d) r += chip(d, 14, sy, 100);
-          else r += '<rect x="14.5" y="' + (sy + 0.5) + '" width="99" height="23" fill="none" stroke="#56685a" stroke-dasharray="3 3"/><text x="64" y="' + (sy + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11" fill="#6d8070">free</text>';
+          const sy = 20 + k * 27;
+          if (d) r += chip(d, 5, sy, 118);
+          else r += '<rect x="5.5" y="' + (sy + 0.5) + '" width="117" height="23" rx="2" fill="none" stroke="#4a4f53" stroke-dasharray="3 3"/><text x="64" y="' + (sy + 16) + '" text-anchor="middle" font-family="' + MONO + '" font-size="11" fill="#6f7579">free</text>';
         });
-      } else r += chip(it.dev, 14, 38, 100);
+      } else r += chip(it.dev, 5, 20, 118);
       g += '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + z + ')">' + r + '</g>';
     }
     out += '<g transform="translate(0 ' + TOP + ')">' + g + '</g>';
