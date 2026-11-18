@@ -1231,3 +1231,8 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 /* no scrollbar or scroll arrows on the tab row */
 .tabs { scrollbar-width: none; overflow-y: hidden; }
 .tabs::-webkit-scrollbar { display: none; }
+
+/* racks: thin case border, nearly square corners */
+:root[data-skin="retro"] .prack-box { border-width: 3px; border-radius: 3px; padding: 9px 9px; box-shadow: 0 0 0 1px var(--putty-dk), inset 0 0 14px rgba(0,0,0,.6), 0 2px 0 rgba(0,0,0,.15); }
+:root[data-skin="retro"] .rack { border-width: 3px; border-radius: 3px; }
+.pcell.psel { border-radius: 4px; }

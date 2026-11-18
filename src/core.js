@@ -1530,8 +1530,8 @@
       const x = it.side === 'L' ? PAD + it.c * CW : W - PAD - it.c * CW - BW;
       const y = PAD + it.r * CH;
       const h = it.h * 30 - 8; // drawn at 100% inside, then scaled like the page does
-      let r = '<rect x="0" y="0" width="128" height="' + h + '" rx="9" fill="#e7dfcc" stroke="#9c937f"/>';
-      r += '<rect x="7" y="7" width="114" height="' + (h - 14) + '" rx="4" fill="#1d2722"/>';
+      let r = '<rect x="0" y="0" width="128" height="' + h + '" rx="3" fill="#e7dfcc" stroke="#9c937f"/>';
+      r += '<rect x="3" y="3" width="122" height="' + (h - 6) + '" rx="1.5" fill="#1d2722"/>';
       const name = it.rack ? it.rack.name : (it.dev.name || modelOf(it.dev.model).label);
       const sub = it.rack ? it.rack.type || (rackModel(v, it.rack) || '') : modelOf(it.dev.model).label;
       r += '<text x="64" y="22" text-anchor="middle" font-family="' + MONO + '" font-size="9.5" font-weight="700" letter-spacing="0.8" fill="#9fc29a">' + e(name.toUpperCase().slice(0, 18)) + '</text>';
