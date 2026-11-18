@@ -1247,6 +1247,10 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .ptint-R { border-left-width: 1px; }
 .pzoom .pimg-btn { margin-left: 10px; padding: 0 10px; }
 
+/* no scrollbar or scroll arrows on the tab row */
+.tabs { scrollbar-width: none; overflow-y: hidden; }
+.tabs::-webkit-scrollbar { display: none; }
+
 </style>
 </head>
 <body>
@@ -3336,6 +3340,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       // Export, Duplicate and Delete live in one ⋮ menu
       '<div class="vhead-actions"><details class="add-menu more-menu"><summary class="btn more-btn" aria-label="More actions for this venue" title="More">' +
       '<svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2.5" r="1.6"/><circle cx="2" cy="8" r="1.6"/><circle cx="2" cy="13.5" r="1.6"/></svg></summary><div class="add-pop" role="menu">' +
+      '<button type="button" role="menuitem" data-act="net-toggle">' + (prefs.netOpen ? 'Hide network settings' : 'Network settings…') + '</button>' +
       '<button type="button" role="menuitem" data-act="export">Export…</button>' +
       (S.readOnly ? '' : '<button type="button" role="menuitem" data-act="dup-venue">Duplicate venue</button><button type="button" role="menuitem" class="danger" data-act="del-venue">Delete venue</button>') +
       '</div></details></div></header>';
@@ -3393,6 +3398,8 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       : 'Adds a secondary network: subnet + 1, same last numbers';
     // folded by default; opens by itself when the network itself needs fixing
     const open = !!prefs.netOpen || !i.ok;
+    // the network settings are out of the way: opened from the ⋮ menu, or by themselves when they need fixing
+    if (!open) return '';
     const brief = i.ok
       ? [ip(i.network) + '/' + i.prefix, 'computer ' + (n.computer || '—'), n.gateway ? 'gateway ' + n.gateway : '', n.dhcpFrom && n.dhcpTo ? 'DHCP ' + n.dhcpFrom.split('.').pop() + '–' + n.dhcpTo.split('.').pop() : '', n.redundancy ? 'Milan redundancy on' : ''].filter(Boolean).join(' · ')
       : 'Needs a network';
@@ -4923,7 +4930,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
       setZoom(k === '+1' ? steps.find((x) => x > z + 0.001) || ZOOM_MAX : steps.slice().reverse().find((x) => x < z - 0.001) || ZOOM_MIN);
     },
     'plan-layout': (t) => { prefs.planLayout = t.dataset.layout; savePrefs(); renderTab(); },
-    'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); },
+    'net-toggle': () => { prefs.netOpen = !prefs.netOpen; savePrefs(); render(); if (prefs.netOpen) { const c = $('#net-card'); if (c) try { c.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* ignore */ } } },
     'dev-view': (t) => { S.devView = t.dataset.view === 'list' ? 'list' : 'racks'; prefs.devView = S.devView; savePrefs(); renderTab(); },
     'amp-edit': (t) => openAmpEditor({ dev: t.dataset.dev }),
     'amp-new': (t) => {

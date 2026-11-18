@@ -1227,3 +1227,7 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 .ptint-L { border-right-width: 1px; }
 .ptint-R { border-left-width: 1px; }
 .pzoom .pimg-btn { margin-left: 10px; padding: 0 10px; }
+
+/* no scrollbar or scroll arrows on the tab row */
+.tabs { scrollbar-width: none; overflow-y: hidden; }
+.tabs::-webkit-scrollbar { display: none; }
