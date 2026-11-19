@@ -1146,7 +1146,7 @@
     S.psel.forEach((k) => { if (!tidy.has(k)) S.psel.delete(k); });
     return '<div class="pgridwrap">' + saveBar + '<p class="psel-bar" aria-live="polite">' + selBarText() + '</p>' +
       '<div class="pgrid-head"><div class="pside-tag pside-tag-L">Left</div><div class="pside-tag pside-tag-R">Right</div></div>' +
-      '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" data-w="' + g.W + '" data-z="' + g.z + '" style="height:' + CANVAS_H + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
+      '<div class="pcanvas" data-cols="' + g.cols + '" data-half="' + g.half + '" data-cw="' + g.cw + '" data-ch="' + g.ch + '" data-w="' + g.W + '" data-z="' + g.z + '" style="min-height:' + CANVAS_H + 'px;--cw:' + g.cw + 'px;--ch:' + g.ch + 'px;--halfw:' + halfW + 'px">' +
       // the work area keeps one size whatever the zoom; only the racks and squares inside it scale.
       // If racks reach past the bottom, the area scrolls instead of growing.
       '<div class="psizer" style="height:' + Math.max(CANVAS_H - 2, (Math.max(0, ...lay.map((x) => x.r + x.h)) + 1) * g.ch + 2 * GRID_PAD) + 'px">' +

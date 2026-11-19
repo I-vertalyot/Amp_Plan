@@ -1409,3 +1409,6 @@ body.drag-copy .pghost { border-color: #2e9d5b; background: rgba(46, 157, 91, .1
 @media (max-width: 760px) {
   .more-menu .add-pop { left: 0; right: auto; max-width: calc(100vw - 32px); }
 }
+
+/* the plan has no scrolling of its own: it grows with its racks and the page scrolls */
+.pcanvas { overflow: hidden !important; height: auto; }
